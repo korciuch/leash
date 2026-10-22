@@ -33,6 +33,54 @@ export function defaultRunner(args, { timeoutMs }) {
 }
 
 /**
+ * Default spawner: like defaultRunner but hands back the ChildProcess so the caller can kill it.
+ * @param {string[]} args
+ * @param {{ timeoutMs: number }} opts
+ * @returns {{ child: import('node:child_process').ChildProcess, output: Promise<string> }}
+ */
+export function defaultSpawner(args, { timeoutMs }) {
+  const osascript = process.env.LEASH_DIALOG_OSASCRIPT || '/usr/bin/osascript';
+  let child;
+  const output = new Promise((resolve, reject) => {
+    child = execFile(osascript, ['-l', 'JavaScript', '-e', DIALOG_SCRIPT, ...args], { timeout: timeoutMs, maxBuffer: 64 * 1024 }, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(String(stdout));
+    });
+  });
+  return { child, output };
+}
+
+const clip = (message) => {
+  const text = String(message || '');
+  return text.length > MAX_MESSAGE ? text.slice(0, MAX_MESSAGE - 3) + '...' : text;
+};
+
+/**
+ * Show the dialog and return a handle that can close it early (the phone answered first).
+ * @param {{ message: string, timeoutSec?: number, spawner?: Function }} opts
+ * @returns {{ result: Promise<'deny'|'once'|'hour'>, cancel: () => void }}
+ */
+export function start({ message, timeoutSec = 60, spawner = defaultSpawner }) {
+  let child = null;
+  let result;
+  try {
+    const spawned = spawner([clip(message), String(timeoutSec)], { timeoutMs: (timeoutSec + 15) * 1000 });
+    child = spawned.child;
+    result = Promise.resolve(spawned.output).then(mapReply, () => 'deny');
+  } catch {
+    result = Promise.resolve('deny');
+  }
+  return {
+    result,
+    cancel() {
+      try {
+        if (child && child.exitCode == null && !child.killed) child.kill('SIGTERM');
+      } catch {}
+    }
+  };
+}
+
+/**
  * Map the button text to a choice. Anything unexpected is a deny.
  * @param {string} output
  * @returns {'deny'|'once'|'hour'}
@@ -50,8 +98,7 @@ export function mapReply(output) {
  * @returns {Promise<'deny'|'once'|'hour'>}
  */
 export async function ask({ message, timeoutSec = 60, runner = defaultRunner }) {
-  let text = String(message || '');
-  if (text.length > MAX_MESSAGE) text = text.slice(0, MAX_MESSAGE - 3) + '...';
+  const text = clip(message);
   try {
     const output = await runner([text, String(timeoutSec)], { timeoutMs: (timeoutSec + 15) * 1000 });
     return mapReply(output);

@@ -5,15 +5,135 @@
 //   GET  /api/grants               { grants: [Grant + { active, msLeft }], now }
 //   POST /api/grants/:id/revoke    { grant } or 404
 //   GET  /api/ledger?limit=200     { entries (newest first), verify: { entries, intact, brokenAt? } }
-//   GET  /api/events               Server-Sent Events: 'change' when grants.json or ledger.jsonl changes
+//   GET  /api/events               Server-Sent Events: 'change' when grants.json, ledger.jsonl or approvals/ change
+//   GET  /api/approvals            { approvals: pending (tokens stripped), now }
+// Phone routes (the only routes reachable from a non-loopback address, token gated):
+//   GET  /a/:id?t=token            phone approval page (plain 404 on a bad id or token)
+//   GET  /api/approvals/:id?t=token  { approval, now } or 404
+//   POST /api/approvals/:id        { token, choice: 'deny' | 'once' } -> approvals.decide(id, token, choice, 'phone')
+// Bind address: LEASH_VIEWER_HOST (default 127.0.0.1). Every other route answers 403 off loopback.
 
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { timingSafeEqual, createHash } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const indexPath = path.join(here, 'index.html');
+const approvePath = path.join(here, 'approve.html');
+
+/** Load Lane F's approvals module lazily, so the viewer still runs without it. */
+export async function loadApprovals() {
+  return import('../approvals.mjs');
+}
+
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+/** @param {http.IncomingMessage} req */
+export function isLoopback(req) {
+  const a = req.socket?.remoteAddress ?? '';
+  return LOOPBACK.has(a) || a.startsWith('127.') || a.startsWith('::ffff:127.');
+}
+
+function sameToken(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/** True when `token` matches the record. Records without a token field were checked by readApproval. */
+function tokenOk(record, token) {
+  if (typeof token !== 'string' || !token) return false;
+  if (typeof record.token === 'string') return sameToken(record.token, token);
+  if (typeof record.tokenHash === 'string') return sameToken(record.tokenHash, createHash('sha256').update(token).digest('hex'));
+  return true;
+}
+
+/**
+ * Adapt either approvals API to { read, decide, pending }:
+ *   brief:  readApproval(id, token), decide(id, token, choice, by) -> record | null, listPending()
+ *   Lane F: getApproval(id), checkToken(id, token), decideApproval(id, token, choice, { by }) -> { ok, error, approval }, listApprovals()
+ */
+export function adaptApprovals(A) {
+  return {
+    async read(id, token) {
+      if (typeof token !== 'string' || !token) return null;
+      if (typeof A.checkToken === 'function' && typeof A.getApproval === 'function') {
+        return (await A.checkToken(id, token)) ? await A.getApproval(id) : null;
+      }
+      const r = await A.readApproval(id, token);
+      return r && tokenOk(r, token) ? r : null;
+    },
+    /** @returns {Promise<{ status: number, approval?: any }>} */
+    async decide(id, token, choice, by) {
+      if (typeof A.decideApproval === 'function') {
+        const out = await A.decideApproval(id, token, choice, { by });
+        if (out?.ok) return { status: 200, approval: out.approval };
+        if (out?.approval && (out.error === 'already_decided' || out.error === 'expired')) return { status: 409, approval: out.approval };
+        return { status: 404 };
+      }
+      const r = await A.decide(id, token, choice, by);
+      return r ? { status: 200, approval: r } : { status: 404 };
+    },
+    async pending() {
+      if (typeof A.listPending === 'function') return (await A.listPending()) || [];
+      if (typeof A.listApprovals === 'function') return ((await A.listApprovals()) || []).filter((r) => r.status === 'pending');
+      return [];
+    },
+  };
+}
+
+const DONE = { deny: 'denied', denied: 'denied', once: 'approved', approved: 'approved', 'approved once': 'approved', allow: 'approved', expired: 'expired' };
+
+/** Shape any approval record into what the pages need. Never includes the token. */
+export function viewOf(r, now = Date.now()) {
+  const a = r.action || {};
+  const raw = String(r.status ?? r.choice ?? r.decision ?? r.outcome ?? '').toLowerCase();
+  let status = DONE[raw] || (r.decidedAt ? (/den/.test(raw) ? 'denied' : 'approved') : 'pending');
+  const expiresAt = r.expiresAt ?? null;
+  if (status === 'pending' && expiresAt && Date.parse(expiresAt) <= now) status = 'expired';
+  if (status === 'denied' && r.decidedBy === 'timeout') status = 'expired';
+  return {
+    id: r.id,
+    summary: r.summary ?? a.summary ?? '',
+    why: r.why ?? a.why ?? '',
+    app: r.app ?? a.app ?? '',
+    verb: r.verb ?? a.verb ?? '',
+    tool: r.tool ?? a.tool ?? '',
+    recipients: r.recipients ?? a.target?.recipients ?? null,
+    createdAt: r.createdAt ?? null,
+    expiresAt,
+    status,
+    decidedBy: r.decidedBy ?? null,
+    decidedAt: r.decidedAt ?? null,
+  };
+}
+
+/** JSON safe to drop inside a <script> element. */
+function scriptJson(v) {
+  return JSON.stringify(v).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
+function readBody(req, max = 8192) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > max) { reject(Object.assign(new Error('Body too large'), { status: 413 })); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+function notFound(res) {
+  res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+  res.end('Not found');
+}
 
 /** Load the real gate modules (Lane A). */
 export async function loadGate() {
@@ -41,6 +161,15 @@ function isActive(g, now) {
   return Date.parse(g.expiresAt) > now;
 }
 
+/** Fingerprint a directory's files (names, sizes, mtimes). */
+function stampDir(dir) {
+  try {
+    return fs.readdirSync(dir).sort().map((n) => n + ':' + stamp(path.join(dir, n))).join('|');
+  } catch {
+    return 'missing';
+  }
+}
+
 /** Fingerprint a file cheaply so the poller can tell when it changed. */
 function stamp(file) {
   try {
@@ -53,13 +182,19 @@ function stamp(file) {
 
 /**
  * Start the viewer.
- * @param {{ port?: number, host?: string, gate?: any, pollMs?: number }} [opts]
+ * @param {{ port?: number, host?: string, gate?: any, approvals?: any, pollMs?: number, isLocal?: (req: http.IncomingMessage) => boolean }} [opts]
  * @returns {Promise<{ server: http.Server, port: number, url: string, close: () => Promise<void> }>}
  */
 export async function startViewer(opts = {}) {
   const gate = opts.gate ?? (await loadGate());
   const { grants: G, ledger: L, paths: P } = gate;
-  const host = opts.host ?? '127.0.0.1';
+  const host = opts.host ?? (process.env.LEASH_VIEWER_HOST || '127.0.0.1');
+  const isLocal = opts.isLocal ?? isLoopback;
+  let approvalsMod = opts.approvals ? adaptApprovals(opts.approvals) : null;
+  async function approvals() {
+    if (!approvalsMod) approvalsMod = adaptApprovals(await loadApprovals());
+    return approvalsMod;
+  }
   const port = opts.port ?? Number(process.env.LEASH_VIEWER_PORT ?? 4777);
   const pollMs = opts.pollMs ?? 1000;
 
@@ -89,13 +224,27 @@ export async function startViewer(opts = {}) {
   // watching the file itself would go deaf), plus a stat poller as the fallback.
   const grantsFile = () => P.grantsPath();
   const ledgerFile = () => P.ledgerPath();
-  const last = { grants: stamp(grantsFile()), ledger: stamp(ledgerFile()) };
+  const approvalsDir = () => path.join(P.leashHome(), 'approvals');
+  const last = { grants: stamp(grantsFile()), ledger: stamp(ledgerFile()), approvals: stampDir(approvalsDir()) };
   function check() {
     const g = stamp(grantsFile());
     const l = stamp(ledgerFile());
+    const a = stampDir(approvalsDir());
     if (g !== last.grants) { last.grants = g; broadcast('grants'); }
     if (l !== last.ledger) { last.ledger = l; broadcast('ledger'); }
+    if (a !== last.approvals) { last.approvals = a; broadcast('approvals'); watchApprovals(); }
   }
+  let approvalsWatcher = null;
+  function watchApprovals() {
+    if (approvalsWatcher) return;
+    try {
+      approvalsWatcher = fs.watch(approvalsDir(), { persistent: false }, () => check());
+      approvalsWatcher.on('error', () => { try { approvalsWatcher.close(); } catch {} approvalsWatcher = null; });
+    } catch {
+      approvalsWatcher = null;
+    }
+  }
+  watchApprovals();
   let watcher = null;
   try {
     watcher = fs.watch(P.leashHome(), { persistent: false }, () => check());
@@ -114,6 +263,65 @@ export async function startViewer(opts = {}) {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname;
     try {
+      const pageMatch = p.match(/^\/a\/([A-Za-z0-9_-]{1,128})$/);
+      const apiMatch = p.match(/^\/api\/approvals\/([A-Za-z0-9_-]{1,128})$/);
+      const phoneRoute = (req.method === 'GET' && (pageMatch || apiMatch)) || (req.method === 'POST' && apiMatch);
+      if (!phoneRoute && !isLocal(req)) {
+        req.resume();
+        res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+        res.end('Forbidden: this page only answers on the Mac itself.');
+        return;
+      }
+
+      if (req.method === 'GET' && (pageMatch || apiMatch)) {
+        const id = (pageMatch || apiMatch)[1];
+        const token = url.searchParams.get('t') ?? '';
+        const A = await approvals();
+        const record = await A.read(id, token);
+        if (!record) { notFound(res); return; }
+        const view = viewOf(record);
+        const now = new Date().toISOString();
+        if (apiMatch) { sendJson(res, 200, { approval: view, now }); return; }
+        const html = fs.readFileSync(approvePath, 'utf8')
+          .replace('__APPROVAL_JSON__', () => scriptJson({ approval: view, now }));
+        res.writeHead(200, {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'referrer-policy': 'no-referrer',
+          'x-frame-options': 'DENY',
+          'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        });
+        res.end(html);
+        return;
+      }
+
+      if (req.method === 'POST' && apiMatch) {
+        const id = apiMatch[1];
+        let body;
+        try { body = JSON.parse((await readBody(req)) || '{}'); } catch (e) {
+          sendJson(res, e.status ?? 400, { error: 'Send JSON: { token, choice }' });
+          return;
+        }
+        const token = typeof body?.token === 'string' ? body.token : '';
+        const choice = body?.choice;
+        if (!token) { notFound(res); return; }
+        if (choice !== 'deny' && choice !== 'once') { sendJson(res, 400, { error: "choice must be 'deny' or 'once'" }); return; }
+        const A = await approvals();
+        const out = await A.decide(id, token, choice, 'phone');
+        if (!out.approval) { notFound(res); return; }
+        check();
+        sendJson(res, out.status, { approval: viewOf(out.approval), now: new Date().toISOString() });
+        return;
+      }
+
+      if (req.method === 'GET' && p === '/api/approvals') {
+        const A = await approvals();
+        const now = Date.now();
+        const list = await A.pending();
+        const pending = list.map((r) => viewOf(r, now)).filter((v) => v.status === 'pending');
+        sendJson(res, 200, { approvals: pending, now: new Date(now).toISOString() });
+        return;
+      }
       if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = fs.readFileSync(indexPath);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -183,12 +391,14 @@ export async function startViewer(opts = {}) {
     clearInterval(heartbeat);
     if (pending) clearTimeout(pending);
     try { watcher?.close(); } catch {}
+    try { approvalsWatcher?.close(); } catch {}
     for (const res of clients) res.end();
     clients.clear();
     await new Promise((resolve) => server.close(() => resolve()));
   }
 
-  return { server, port: actual, url: `http://${host}:${actual}`, close };
+  const shown = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+  return { server, port: actual, host, url: `http://${shown.includes(':') ? `[${shown}]` : shown}:${actual}`, close };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

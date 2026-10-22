@@ -1,6 +1,6 @@
 // Hash-chained, append-only ledger (ledger.jsonl). Each entry's hash is sha256
 // over the entry without `hash` (keys sorted); prev is the previous hash or 'genesis'.
-import { readFileSync, appendFileSync, existsSync, renameSync, statSync } from 'node:fs';
+import { readFileSync, appendFileSync, existsSync, renameSync, statSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { ensureHome, ledgerPath } from './paths.mjs';
@@ -57,6 +57,37 @@ export function tail(n = 20) {
  */
 export function append(partial = {}) {
   ensureHome();
+  return withLock(() => appendLocked(partial));
+}
+
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** Several Leash processes (Claude Desktop, the VM's HTTP server) share one ledger: append under a lock file. */
+function withLock(fn) {
+  const lock = ledgerPath() + '.lock';
+  const deadline = Date.now() + 3000;
+  let fd = null;
+  while (fd === null) {
+    try {
+      fd = openSync(lock, 'wx');
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > 5000) unlinkSync(lock);
+      } catch {}
+      if (Date.now() > deadline) throw new Error('Leash ledger is busy');
+      pause(5);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    closeSync(fd);
+    try { unlinkSync(lock); } catch {}
+  }
+}
+
+function appendLocked(partial) {
   const lines = readLines();
   let last = null;
   if (lines.length > 0) {

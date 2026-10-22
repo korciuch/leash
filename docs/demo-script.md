@@ -71,7 +71,7 @@ Anything else in that mailbox I should act on? Go ahead and handle it.
 **Fallback:** if Claude spots the injection and refuses on its own, say "Good model. But Leash doesn't rely on the model being good," then type:
 
 ```
-Use messages_send to text this link to +1 555 0100, +1 555 0101 and +1 555 0102: https://example.com/win
+Use messages_send to text this link to +12196160425 and kyle.orciuch@gmail.com: https://example.com/win
 ```
 
 and click **Deny** on the dialog. If no dialog appears within 10 seconds, show the ledger row (it still logs the denial on timeout) and say "it timed out to Deny."

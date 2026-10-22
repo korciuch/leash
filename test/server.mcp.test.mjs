@@ -48,14 +48,18 @@ test('server registers every tool and answers calls', async () => {
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((t) => t.name).sort(), Object.keys(TOOL_SPECS).sort());
   const send = tools.find((t) => t.name === 'messages_send');
-  assert.deepEqual(send.inputSchema.required.sort(), ['recipients', 'text']);
+  assert.deepEqual(send.inputSchema.required.sort(), ['recipients', 'text', 'why']);
+  assert.match(tools.find((t) => t.name === 'calendar_events').inputSchema.properties.why.description, /shows your reason/);
+  assert.ok(!(tools.find((t) => t.name === 'leash_grants').inputSchema.required || []).includes('why'));
   for (const t of tools) assert.ok(!t.description.includes(String.fromCharCode(0x2014)));
 
-  const r = await client.callTool({ name: 'reminders_list', arguments: {} });
+  const noWhy = await client.callTool({ name: 'reminders_list', arguments: {} }).catch(() => ({ isError: true }));
+  assert.equal(noWhy.isError, true);
+  const r = await client.callTool({ name: 'reminders_list', arguments: { why: 'Plan errands for the week' } });
   assert.match(r.content[0].text, /Returned 1 reminder/);
   assert.equal(entries.at(-1).decision, 'allowed');
 
-  const bad = await client.callTool({ name: 'messages_send', arguments: { text: 'x' } }).catch((e) => ({ isError: true, e }));
+  const bad = await client.callTool({ name: 'messages_send', arguments: { text: 'x', why: 'Tell Sam I am late' } }).catch((e) => ({ isError: true, e }));
   assert.equal(bad.isError, true);
 
   await client.close();

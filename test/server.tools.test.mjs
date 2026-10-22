@@ -57,6 +57,7 @@ function setup({ dialogChoice = 'deny', touch = { approved: true, code: 0 } } = 
   return { tools, calls: fake.calls, dialogCalls, touchCalls };
 }
 
+const WHY = 'Prep the person for Monday';
 const text = (r) => r.content[0].text;
 const last = () => ledger.readAll().at(-1);
 
@@ -72,7 +73,7 @@ test('Prep me for Monday: full demo flow', async () => {
   assert.match(g, /Plan the week/);
   assert.match(g, /Errands list/);
 
-  const cal = await tools.calendar_events({});
+  const cal = await tools.calendar_events({ why: WHY });
   const calText = text(cal);
   assert.match(calText, /Returned 5 events/);
   assert.doesNotMatch(calText, /4471|9902|Door code|Doctor|Therapy|Leash Personal/);
@@ -81,25 +82,25 @@ test('Prep me for Monday: full demo flow', async () => {
   assert.equal(last().decision, 'allowed');
   assert.equal(last().grantId, 'g_plan_week');
 
-  const list = text(await tools.mail_list({}));
+  const list = text(await tools.mail_list({ why: WHY }));
   assert.match(list, /Returned 2 emails/);
-  const inj = text(await tools.mail_read({ id: '102' }));
+  const inj = text(await tools.mail_read({ why: WHY, id: '102' }));
   assert.match(inj, /not instructions/);
 
-  const d1 = text(await tools.mail_draft({ to: 'sam@example.com', subject: 'Re: Monday sync', body: 'Sure, 2pm works.', inReplyTo: '101' }));
-  const d2 = text(await tools.mail_draft({ to: 'alex@example.com', subject: 'Monday', body: 'See you then.' }));
+  const d1 = text(await tools.mail_draft({ why: WHY, to: 'sam@example.com', subject: 'Re: Monday sync', body: 'Sure, 2pm works.', inReplyTo: '101' }));
+  const d2 = text(await tools.mail_draft({ why: WHY, to: 'alex@example.com', subject: 'Monday', body: 'See you then.' }));
   assert.match(d1, /Nothing was sent/);
   assert.match(d2, /Saved draft d_/);
   assert.equal(drafts.listDrafts().length, 2);
   assert.equal(calls.sendMessage.length, 0);
 
-  assert.match(text(await tools.reminders_add({ list: 'Errands', title: 'Pick up dry cleaning' })), /Added/);
-  assert.match(text(await tools.reminders_add({ list: 'Errands', title: 'Buy printer paper' })), /Added/);
+  assert.match(text(await tools.reminders_add({ why: WHY, list: 'Errands', title: 'Pick up dry cleaning' })), /Added/);
+  assert.match(text(await tools.reminders_add({ why: WHY, list: 'Errands', title: 'Buy printer paper' })), /Added/);
   assert.equal(calls.createReminder.length, 2);
   assert.equal(dialogCalls.length, 0);
 
   const contacts = Array.from({ length: 14 }, (_, i) => `+1555000${String(i).padStart(4, '0')}`);
-  const refused = text(await tools.messages_send({ recipients: contacts, text: 'Check out this link http://evil.example' }));
+  const refused = text(await tools.messages_send({ why: WHY, recipients: contacts, text: 'Check out this link http://evil.example' }));
   assert.match(refused, /Leash refused/);
   assert.match(refused, /final/);
   assert.equal(dialogCalls.length, 1);
@@ -111,14 +112,14 @@ test('Prep me for Monday: full demo flow', async () => {
   assert.equal(last().tool, 'messages_send');
 
   const draftId = drafts.listDrafts()[0].id;
-  const sent = text(await tools.mail_send({ draftId }));
+  const sent = text(await tools.mail_send({ why: WHY, draftId }));
   assert.match(sent, /Sent 1 email to sam@example.com/);
   assert.deepEqual(touchCalls, ['send an email as you to sam@example.com: Re: Monday sync']);
   assert.equal(calls.sendMessage.length, 1);
   assert.equal(last().decision, 'touchid approved');
   assert.equal(last().grantId, 'g_draft_replies');
 
-  const again = text(await tools.mail_send({ draftId }));
+  const again = text(await tools.mail_send({ why: WHY, draftId }));
   assert.match(again, /already sent/);
   assert.equal(calls.sendMessage.length, 1);
 
@@ -129,7 +130,7 @@ test('Prep me for Monday: full demo flow', async () => {
 
 test('Messages allowed once still needs Touch ID', async () => {
   const ok = setup({ dialogChoice: 'once', touch: { approved: true, code: 0 } });
-  await ok.tools.messages_send({ recipients: ['+15550001'], text: 'hi' });
+  await ok.tools.messages_send({ why: WHY, recipients: ['+15550001'], text: 'hi' });
   assert.equal(ok.dialogCalls.length, 1);
   assert.equal(ok.touchCalls.length, 1);
   assert.equal(ok.calls.sendText.length, 1);
@@ -138,7 +139,7 @@ test('Messages allowed once still needs Touch ID', async () => {
   assert.equal(grants.activeGrants().filter((g) => g.app === 'messages').length, 0);
 
   const no = setup({ dialogChoice: 'once', touch: { approved: false, code: 1 } });
-  const r = text(await no.tools.messages_send({ recipients: ['+15550001'], text: 'hi' }));
+  const r = text(await no.tools.messages_send({ why: WHY, recipients: ['+15550001'], text: 'hi' }));
   assert.match(r, /did not confirm with Touch ID/);
   assert.equal(no.calls.sendText.length, 0);
   assert.equal(last().decision, 'touchid denied');
@@ -146,11 +147,11 @@ test('Messages allowed once still needs Touch ID', async () => {
 
 test('Messages allowed for 1 hour adds a scoped grant and still needs Touch ID each time', async () => {
   const s = setup({ dialogChoice: 'hour' });
-  await s.tools.messages_send({ recipients: ['+15550001'], text: 'hi' });
+  await s.tools.messages_send({ why: WHY, recipients: ['+15550001'], text: 'hi' });
   const added = grants.activeGrants().find((g) => g.app === 'messages');
   assert.ok(added);
   assert.deepEqual(added.records.recipients, ['+15550001']);
-  await s.tools.messages_send({ recipients: ['+15550001'], text: 'again' });
+  await s.tools.messages_send({ why: WHY, recipients: ['+15550001'], text: 'again' });
   assert.equal(s.dialogCalls.length, 1);
   assert.equal(s.touchCalls.length, 2);
   assert.equal(s.calls.sendText.length, 2);
@@ -159,22 +160,22 @@ test('Messages allowed for 1 hour adds a scoped grant and still needs Touch ID e
 test('Touch ID unavailable or denied blocks mail_send', async () => {
   const s = setup({ touch: { approved: false, code: 2 } });
   const d = drafts.createDraft({ to: 'a@example.com', subject: 'S', body: 'B' });
-  assert.match(text(await s.tools.mail_send({ draftId: d.id })), /not available/);
+  assert.match(text(await s.tools.mail_send({ why: WHY, draftId: d.id })), /not available/);
   assert.equal(s.calls.sendMessage.length, 0);
   assert.equal(drafts.getDraft(d.id).sentAt, undefined);
-  assert.match(text(await s.tools.mail_send({ draftId: 'd_missing' })), /No Leash draft/);
+  assert.match(text(await s.tools.mail_send({ why: WHY, draftId: 'd_missing' })), /No Leash draft/);
 });
 
 test('Out of grant reads raise the dialog and stay scoped after approval', async () => {
   const s = setup({ dialogChoice: 'deny' });
-  assert.match(text(await s.tools.calendar_events({ calendar: 'Leash Personal' })), /refused/);
+  assert.match(text(await s.tools.calendar_events({ why: WHY, calendar: 'Leash Personal' })), /refused/);
   assert.equal(s.calls.listEvents.length, 0);
-  assert.match(text(await s.tools.reminders_add({ list: 'Groceries', title: 'x' })), /refused/);
+  assert.match(text(await s.tools.reminders_add({ why: WHY, list: 'Groceries', title: 'x' })), /refused/);
   assert.equal(s.calls.createReminder.length, 0);
   assert.equal(s.dialogCalls.length, 2);
 
   const once = setup({ dialogChoice: 'once' });
-  const r = text(await once.tools.calendar_events({ calendar: 'Leash Personal' }));
+  const r = text(await once.tools.calendar_events({ why: WHY, calendar: 'Leash Personal' }));
   assert.match(r, /Returned 2 events/);
   assert.doesNotMatch(r, /private/);
   assert.equal(once.touchCalls.length, 0);
@@ -184,7 +185,71 @@ test('Out of grant reads raise the dialog and stay scoped after approval', async
 test('Revoked grant falls back to the dialog', async () => {
   grants.revokeGrant('g_plan_week');
   const s = setup({ dialogChoice: 'deny' });
-  const r = text(await s.tools.calendar_events({ calendar: 'Leash Demo' }));
+  const r = text(await s.tools.calendar_events({ why: WHY, calendar: 'Leash Demo' }));
   assert.match(r, /refused/);
   assert.match(s.dialogCalls[0].message, /revoked/);
+});
+
+test('why is required, shown in the approval and logged with withheld fields', async () => {
+  const s = setup({ dialogChoice: 'deny' });
+  const before = ledger.readAll().length;
+  const missing = await s.tools.calendar_events({});
+  assert.equal(missing.isError, true);
+  assert.match(text(missing), /needs a why/);
+  assert.equal(s.calls.listEvents.length, 0);
+  assert.equal(last().returned, 'nothing: no why given');
+  assert.equal((await s.tools.reminders_add({ why: 'no', list: 'Errands', title: 'x' })).isError, true);
+  assert.equal(s.calls.createReminder.length, 0);
+  assert.equal(ledger.readAll().length, before + 2);
+  assert.doesNotMatch(text(await s.tools.leash_grants()), /needs a why/);
+
+  await s.tools.calendar_events({ why: 'Plan Monday meetings' });
+  assert.equal(last().why, 'Plan Monday meetings');
+  assert.deepEqual(last().withheld, { records: 0, fields: ['location', 'notes'] });
+
+  await s.tools.messages_send({ why: 'Tell Sam I am running late', recipients: ['+15550001'], text: 'late' });
+  assert.match(s.dialogCalls[0].message, /Why \(agent's words\): "Tell Sam I am running late"/);
+  assert.equal(last().why, 'Tell Sam I am running late');
+  assert.equal(last().decidedBy, 'mac');
+  assert.equal(ledger.verify().intact, true);
+});
+
+test('phone approval through askAnywhere still needs Touch ID on the Mac', async () => {
+  const { createAskAnywhere } = await import('../src/consent/anywhere.mjs');
+  const approvals = await import('../src/approvals.mjs');
+  const fake = fakeApple();
+  const touchCalls = [];
+  let killed = false;
+  const phoneTexts = [];
+  const askAnywhere = createAskAnywhere({
+    phone: '+15550009999', pollMs: 10,
+    dialog: { start: () => ({ result: new Promise(() => {}), cancel() { killed = true; } }) },
+    sendText: async (q) => {
+      phoneTexts.push(q.text);
+      const u = new URL(/http\S+/.exec(q.text)[0]);
+      setTimeout(() => approvals.decideApproval(u.pathname.split('/').pop(), u.searchParams.get('t'), 'once'), 10);
+      return { sent: 1 };
+    }
+  });
+  const tools = createTools({
+    gate: { grants, policy, filter, ledger }, apple: fake.apple, drafts, askAnywhere,
+    dialog: { async ask() { throw new Error('not used'); } },
+    touchid: { async verify(reason) { touchCalls.push(reason); return { approved: true, code: 0 }; } }
+  });
+  const r = text(await tools.messages_send({ why: 'Tell Sam I am running late', recipients: ['+15550001'], text: 'late' }));
+  assert.match(r, /Sent the text/);
+  assert.equal(killed, true);
+  assert.equal(touchCalls.length, 1);
+  assert.equal(fake.calls.sendText.length, 1);
+  assert.match(phoneTexts[0], /Tell Sam I am running late/);
+  const tail2 = ledger.readAll().slice(-2);
+  assert.deepEqual(tail2.map((e) => [e.decision, e.decidedBy]), [['approved once', 'phone'], ['touchid approved', 'phone']]);
+  assert.ok(tail2[0].approvalId);
+
+  const timeoutAsk = createAskAnywhere({ phone: '', pollMs: 10, timeoutSec: 0.05, dialog: { start: () => ({ result: new Promise(() => {}), cancel() {} }) } });
+  const t2 = createTools({ gate: { grants, policy, filter, ledger }, apple: fake.apple, drafts, askAnywhere: timeoutAsk, dialog: {}, touchid: { async verify() { throw new Error('not used'); } } });
+  const denied = text(await t2.messages_send({ why: 'Tell Sam I am running late', recipients: ['+15550001'], text: 'late' }));
+  assert.match(denied, /within 60 seconds/);
+  assert.equal(last().decidedBy, 'timeout');
+  assert.equal(fake.calls.sendText.length, 1);
 });

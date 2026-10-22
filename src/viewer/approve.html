@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Leash approval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea; --panel: #fbfaf6; --panel-2: #efebe2;
+    --ink: #15171c; --ink-2: #4a4e57; --ink-3: #7b7f88; --line: #dcd6c9; --accent: #1f5f4a;
+    --ok: #157a46; --ok-bg: #e2f2e8; --ok-solid: #16834a;
+    --bad: #c0322a; --bad-bg: #fbe5e2; --bad-solid: #d0342b;
+    --ask: #2357c9; --ask-bg: #e3ebfb;
+    --tid: #7438d6; --tid-bg: #efe6fc;
+    --warn: #b86a00; --warn-bg: #fdf0d9;
+    --off: #6c7079; --off-bg: #e9e7e2;
+    --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1013; --panel: #16191e; --panel-2: #1d2128;
+      --ink: #eef0f3; --ink-2: #b4b9c2; --ink-3: #868c96; --line: #2a2f37; --accent: #6fd3a8;
+      --ok: #4ad68c; --ok-bg: #12301f; --ok-solid: #1f9d5a;
+      --bad: #ff6f63; --bad-bg: #3a1714; --bad-solid: #e0443a;
+      --ask: #7aa7ff; --ask-bg: #172747;
+      --tid: #c49bff; --tid-bg: #2c1c4a;
+      --warn: #ffb547; --warn-bg: #3a2a0c;
+      --off: #9aa0aa; --off-bg: #23272e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1013; --panel: #16191e; --panel-2: #1d2128;
+    --ink: #eef0f3; --ink-2: #b4b9c2; --ink-3: #868c96; --line: #2a2f37; --accent: #6fd3a8;
+    --ok: #4ad68c; --ok-bg: #12301f; --ok-solid: #1f9d5a;
+    --bad: #ff6f63; --bad-bg: #3a1714; --bad-solid: #e0443a;
+    --ask: #7aa7ff; --ask-bg: #172747;
+    --tid: #c49bff; --tid-bg: #2c1c4a;
+    --warn: #ffb547; --warn-bg: #3a2a0c;
+    --off: #9aa0aa; --off-bg: #23272e;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .page {
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    max-width: 520px; margin: 0 auto;
+    padding: calc(14px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 0 calc(20px + env(safe-area-inset-left));
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .wordmark { font-family: var(--serif); font-size: 40px; line-height: 1; margin: 0; font-weight: 400; letter-spacing: -0.01em; }
+  .wordmark i { color: var(--accent); font-style: italic; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--warn); background: var(--warn-bg);
+    padding: 7px 12px; border-radius: 999px;
+  }
+  .tag .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: blink 1.4s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  main { flex: 1; padding: 22px 0 24px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 7px; border-radius: 999px;
+    font-size: 15px; font-weight: 600;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  }
+  .chip.verb { padding-left: 12px; }
+  .glyph { width: 22px; height: 22px; border-radius: 6px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: var(--off); }
+  .glyph.calendar { background: #e0483e; } .glyph.reminders { background: #f29a1f; }
+  .glyph.mail { background: #2f7ef0; } .glyph.messages { background: #2fb34f; }
+  .chip.t0 { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .chip.t1 { background: var(--ask-bg); color: var(--ask); border-color: transparent; }
+  .chip.t2 { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .chip.t3 { background: var(--tid-bg); color: var(--tid); border-color: transparent; }
+
+  h1.summary { font-size: 30px; line-height: 1.18; font-weight: 600; letter-spacing: -0.015em; margin: 0; overflow-wrap: anywhere; }
+  .to { margin-top: 10px; color: var(--ink-2); font-size: 16px; overflow-wrap: anywhere; }
+  .to b { color: var(--ink-3); font-weight: 500; }
+
+  .says {
+    margin-top: 22px; padding: 16px 18px 18px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+    position: relative;
+  }
+  .says .eyebrow { margin-bottom: 6px; }
+  .says blockquote {
+    margin: 0; font-family: var(--serif); font-style: italic;
+    font-size: 25px; line-height: 1.22; color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .says .none { font-family: var(--sans); font-style: normal; font-size: 16px; color: var(--ink-3); }
+  .note { margin-top: 12px; font-size: 14px; color: var(--ink-3); }
+
+  .timer { margin-top: 22px; }
+  .timer-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+  .timer-top .t { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--warn); border-radius: inherit; transform-origin: left center; transition: transform 1s linear, background .3s; }
+  .timer.low .bar i { background: var(--bad); }
+  .timer.low .t { color: var(--bad); }
+
+  footer {
+    position: sticky; bottom: 0;
+    margin: 0 calc(-20px - env(safe-area-inset-right)) 0 calc(-20px - env(safe-area-inset-left));
+    padding: 14px calc(20px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 0%, transparent), var(--bg) 22%);
+  }
+  .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button.big {
+    font: inherit; font-size: 21px; font-weight: 700; letter-spacing: -0.01em;
+    min-height: 76px; border-radius: 20px; border: 0; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    transition: transform .12s cubic-bezier(.3, .7, .4, 1.5), box-shadow .12s ease, filter .12s ease;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  button.big small { font-size: 13px; font-weight: 500; opacity: .85; letter-spacing: 0; }
+  button.deny { background: var(--bad-solid); color: #fff; box-shadow: 0 6px 0 color-mix(in srgb, var(--bad-solid) 55%, #000), 0 14px 26px -12px var(--bad-solid); }
+  button.once { background: var(--ok-solid); color: #fff; box-shadow: 0 6px 0 color-mix(in srgb, var(--ok-solid) 55%, #000), 0 14px 26px -12px var(--ok-solid); }
+  button.big:active, button.big.pressed { transform: translateY(5px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); filter: brightness(.94); }
+  button.big:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  button.big:disabled { opacity: .55; cursor: default; }
+  .fine { text-align: center; color: var(--ink-3); font-size: 13px; margin-top: 12px; }
+
+  /* Result screen */
+  .result {
+    position: fixed; inset: 0; z-index: 10;
+    display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: calc(24px + env(safe-area-inset-top)) calc(28px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(28px + env(safe-area-inset-left));
+    color: #fff;
+  }
+  .result.show { display: flex; animation: wipe .45s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes wipe { from { clip-path: circle(0% at 50% 90%); } to { clip-path: circle(150% at 50% 90%); } }
+  .result.denied { background: var(--bad-solid); }
+  .result.approved { background: var(--ok-solid); }
+  .result.expired { background: #3b3f47; }
+  .result .icon {
+    width: 116px; height: 116px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(255, 255, 255, .16); border: 3px solid rgba(255, 255, 255, .9);
+    margin-bottom: 28px;
+    animation: pop .5s .15s cubic-bezier(.3, .7, .4, 1.6) both;
+  }
+  .result .icon svg { width: 60px; height: 60px; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+  .result h2 { margin: 0; font-size: 40px; line-height: 1.08; font-weight: 700; letter-spacing: -0.02em; }
+  .result p { margin: 14px 0 0; font-size: 18px; opacity: .9; max-width: 22em; overflow-wrap: anywhere; }
+  .result .mark { position: absolute; top: calc(18px + env(safe-area-inset-top)); left: 0; right: 0; font-family: var(--serif); font-size: 30px; opacity: .85; }
+  .result .mark i { font-style: italic; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .result.show, .result .icon, .tag .dot { animation: none; }
+    .bar i { transition: none; }
+  }
+</style>
+</head>
+<body>
+<script id="approval-data" type="application/json">__APPROVAL_JSON__</script>
+<div class="page">
+  <header>
+    <div class="wordmark">Lea<i>sh</i></div>
+    <span class="tag" id="tag"><span class="dot"></span>Needs you</span>
+  </header>
+  <main>
+    <p class="eyebrow">Your agent wants to</p>
+    <div class="chips" id="chips"></div>
+    <h1 class="summary" id="summary"></h1>
+    <div class="to" id="to" hidden></div>
+    <section class="says" aria-labelledby="says-h">
+      <p class="eyebrow" id="says-h">The agent says</p>
+      <blockquote id="why"></blockquote>
+    </section>
+    <p class="note">This is the agent's own explanation. Leash shows it so you can judge it. It is not proof.</p>
+    <div class="timer" id="timer">
+      <div class="timer-top"><span id="timer-label">Expires in</span><span class="t" id="timer-t">--:--</span></div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+  </main>
+  <footer>
+    <div class="buttons">
+      <button class="big deny" id="deny" type="button">Deny<small>Nothing is sent</small></button>
+      <button class="big once" id="once" type="button">Approve once<small>Just this call</small></button>
+    </div>
+    <div class="fine" id="fine">If you do nothing, Leash denies it.</div>
+  </footer>
+</div>
+
+<div class="result" id="result" role="status" aria-live="assertive">
+  <div class="mark">Lea<i>sh</i></div>
+  <div class="icon" id="result-icon"></div>
+  <h2 id="result-h"></h2>
+  <p id="result-p"></p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  // Everything from the server goes in with textContent. The summary and why can contain attacker text.
+  const $ = (id) => document.getElementById(id);
+  const str = (v) => (v == null ? '' : String(v));
+  let data = {};
+  try { data = JSON.parse($('approval-data').textContent || '{}') || {}; } catch {}
+  let a = data.approval || {};
+  let skew = data.now ? Date.parse(data.now) - Date.now() : 0;
+  const token = new URLSearchParams(location.search).get('t') || '';
+  const APP = { calendar: ['Calendar', 'C'], reminders: ['Reminders', 'R'], mail: ['Mail', 'M'], messages: ['Messages', 'T'] };
+  const TIER = { read: 0, create: 1, draft: 1, modify: 2, send: 3, delete: 3 };
+  const total = Math.max(1000, (Date.parse(a.expiresAt) || 0) - (Date.parse(a.createdAt) || Date.parse(data.now) || Date.now()));
+  let done = false;
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function render() {
+    const chips = $('chips');
+    chips.replaceChildren();
+    if (a.app) {
+      const [name, letter] = APP[a.app] || [str(a.app), '?'];
+      const c = el('span', 'chip');
+      c.append(el('span', 'glyph ' + str(a.app).replace(/[^a-z]/g, ''), letter), name);
+      chips.append(c);
+    }
+    if (a.verb) {
+      const t = TIER[a.verb] ?? 0;
+      chips.append(el('span', 'chip verb t' + t, str(a.verb) + (t === 3 ? ' (top tier)' : '')));
+    }
+    $('summary').textContent = str(a.summary) || 'An action outside your grants';
+    const rec = Array.isArray(a.recipients) ? a.recipients.filter(Boolean) : [];
+    if (rec.length) {
+      const to = $('to');
+      to.replaceChildren(el('b', null, 'To: '), rec.slice(0, 6).join(', ') + (rec.length > 6 ? ` and ${rec.length - 6} more` : ''));
+      to.hidden = false;
+    }
+    const why = $('why');
+    if (str(a.why).trim()) { why.className = ''; why.textContent = '“' + str(a.why).trim() + '”'; }
+    else { why.className = 'none'; why.textContent = 'The agent gave no reason.'; }
+  }
+
+  function fmt(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const m = Math.floor(s / 60);
+    return `${m}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  const ICON = {
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  };
+  function where(by) {
+    const b = str(by).toLowerCase();
+    if (b === 'phone') return 'on this iPhone';
+    if (b) return 'on the Mac';
+    return '';
+  }
+  function showResult(status, by, mine) {
+    if (done) return;
+    done = true;
+    const r = $('result');
+    let h, p, icon;
+    if (status === 'denied') {
+      h = 'Denied. Nothing was sent.';
+      p = mine ? 'The agent was told no. This is in the ledger.' : `Already denied ${where(by)}.`.replace(' .', '.');
+      icon = ICON.x;
+    } else if (status === 'approved') {
+      h = 'Approved once.';
+      p = mine ? 'Just this one call. The next one asks again.' : `Already approved ${where(by)}.`.replace(' .', '.');
+      icon = ICON.check;
+    } else {
+      h = 'Expired. Nothing was sent.';
+      p = 'Nobody answered in time, so Leash denied it.';
+      icon = ICON.clock;
+    }
+    r.className = 'result show ' + (status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'expired');
+    $('result-icon').innerHTML = icon; // fixed markup, no server data
+    $('result-h').textContent = h;
+    $('result-p').textContent = p;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', status === 'approved' ? '#16834a' : status === 'denied' ? '#d0342b' : '#3b3f47');
+    $('deny').disabled = $('once').disabled = true;
+  }
+
+  function tick() {
+    if (done) return;
+    if (a.status && a.status !== 'pending') { showResult(a.status, a.decidedBy, false); return; }
+    const exp = Date.parse(a.expiresAt);
+    if (!exp) { $('timer').hidden = true; return; }
+    const left = exp - (Date.now() + skew);
+    $('timer-t').textContent = fmt(left);
+    $('bar').style.transform = `scaleX(${Math.max(0, Math.min(1, left / total))})`;
+    $('timer').classList.toggle('low', left < 15000);
+    if (left <= 0) showResult('expired', null, false);
+  }
+
+  function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch {} }
+
+  async function choose(choice, btn) {
+    if (done) return;
+    buzz(12);
+    $('deny').disabled = $('once').disabled = true;
+    btn.classList.add('pressed');
+    try {
+      const res = await fetch(`/api/approvals/${encodeURIComponent(a.id)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token, choice }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        a = body.approval || a;
+        buzz(choice === 'deny' ? [20, 60, 20] : 30);
+        showResult(choice === 'deny' ? 'denied' : 'approved', 'phone', true);
+        return;
+      }
+      await refresh();
+      if (!done) showResult('expired', null, false);
+    } catch {
+      btn.classList.remove('pressed');
+      $('deny').disabled = $('once').disabled = false;
+      $('fine').textContent = 'Could not reach the Mac. Check Wi-Fi and try again.';
+    }
+  }
+
+  async function refresh() {
+    if (done || !a.id) return;
+    try {
+      const res = await fetch(`/api/approvals/${encodeURIComponent(a.id)}?t=${encodeURIComponent(token)}`, { cache: 'no-store' });
+      if (res.status === 404) { showResult('expired', null, false); return; }
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body.now) skew = Date.parse(body.now) - Date.now();
+      a = body.approval || a;
+      tick();
+    } catch {}
+  }
+
+  const press = (e) => e.currentTarget.classList.add('pressed');
+  const release = (e) => e.currentTarget.classList.remove('pressed');
+  for (const id of ['deny', 'once']) {
+    const b = $(id);
+    b.addEventListener('pointerdown', (e) => { press(e); buzz(8); });
+    b.addEventListener('pointerup', release);
+    b.addEventListener('pointerleave', release);
+    b.addEventListener('pointercancel', release);
+    b.addEventListener('click', () => choose(id, b));
+  }
+
+  render();
+  tick();
+  setInterval(tick, 250);
+  setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

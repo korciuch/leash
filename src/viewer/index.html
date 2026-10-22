@@ -259,6 +259,65 @@
   .d-ask { --c: var(--ask); --cb: var(--ask-bg); }
   .d-tid { --c: var(--tid); --cb: var(--tid-bg); }
   .d-off { --c: var(--off); --cb: var(--off-bg); }
+  .d-warn { --c: var(--warn); --cb: var(--warn-bg); }
+  .row .why {
+    font-family: var(--serif); font-style: italic; font-size: 22px; line-height: 1.25;
+    color: var(--ink-2); margin-top: 4px; overflow-wrap: anywhere;
+  }
+  .row .why::before { content: "\201C"; } .row .why::after { content: "\201D"; }
+  .row .withheld { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: 16px; color: var(--ink-3); }
+  .row .withheld .lbl { font-weight: 600; color: var(--ink-2); }
+  .redact {
+    display: inline-block; position: relative;
+    font-family: var(--mono); font-size: 15px; line-height: 1.35;
+    padding: 1px 8px; border-radius: 3px;
+    background: #0b0b0c; color: transparent;
+    cursor: help; outline: none;
+    transition: background .18s ease, color .18s ease;
+  }
+  :root[data-theme="dark"] .redact { box-shadow: inset 0 0 0 1px #3a3f48; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .redact { box-shadow: inset 0 0 0 1px #3a3f48; } }
+  .redact:hover, .redact:focus-visible { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+  .row .withheld .hid { font-weight: 600; color: var(--ink-2); }
+
+  /* Waiting for you */
+  .row.pending { background: var(--warn-bg); border-left-width: 8px; }
+  .row.pending .pill { background: var(--warn); color: #fff; }
+  :root[data-theme="dark"] .row.pending .pill { color: #1a1205; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .row.pending .pill { color: #1a1205; } }
+  .row.pending .time .left { font-size: 22px; font-weight: 600; color: var(--warn); }
+  .row.pending .where { font-size: 15px; color: var(--ink-3); margin-top: 6px; }
+  .row.pending { animation: wait 2s ease-in-out infinite; }
+  @keyframes wait { 50% { background: color-mix(in srgb, var(--warn-bg) 60%, var(--panel)); } }
+
+  /* Attack banner */
+  .banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    background: #c0322a; color: #fff;
+    padding: 26px 48px 30px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 8px 32px; align-items: center;
+    box-shadow: 0 20px 60px -20px rgba(120, 0, 0, .7);
+    transform: translateY(-110%); transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+    cursor: pointer;
+  }
+  .banner.show { transform: none; }
+  .banner .shield { width: 84px; height: 84px; grid-row: span 2; }
+  .banner .big { font-size: 72px; font-weight: 700; line-height: .95; letter-spacing: -0.03em; }
+  .banner .what { min-width: 0; }
+  .banner .b-summary { font-size: 28px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+  .banner .b-why { font-family: var(--serif); font-style: italic; font-size: 26px; line-height: 1.2; opacity: .92; margin-top: 4px; overflow-wrap: anywhere; }
+  .banner .b-why::before { content: "The agent said: \201C"; font-family: var(--sans); font-style: normal; font-size: 18px; opacity: .8; }
+  .banner .b-why::after { content: "\201D"; }
+  .banner .b-where {
+    grid-row: span 2; align-self: center; white-space: nowrap;
+    font-size: 20px; font-weight: 700; padding: 10px 18px; border-radius: 999px;
+    background: rgba(255, 255, 255, .18); border: 1.5px solid rgba(255, 255, 255, .5);
+  }
+  .banner .b-head { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
+  .banner .b-tool { font-family: var(--mono); font-size: 18px; opacity: .8; }
+  .banner .b-bar { position: absolute; left: 0; bottom: 0; height: 5px; background: rgba(255, 255, 255, .7); width: 100%; transform-origin: left; }
+  .banner.show .b-bar { animation: drain 8s linear forwards; }
+  @keyframes drain { to { transform: scaleX(0); } }
   .row.enter { animation: enter .9s cubic-bezier(.2, .8, .2, 1); }
   @keyframes enter {
     0% { opacity: 0; transform: translateY(-10px); background: var(--cb); }
@@ -270,7 +329,8 @@
   .error { color: var(--bad); font-size: 17px; margin-top: 8px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .row.enter, .live.on .dot { animation: none; }
+    .row.enter, .live.on .dot, .row.pending, .banner.show .b-bar { animation: none; }
+    .banner { transition: none; }
   }
   @media (max-width: 1100px) {
     main { grid-template-columns: 1fr; }
@@ -293,6 +353,13 @@
     .row .pill { justify-self: end; }
     .row .body { grid-column: 1 / -1; }
     .row .summary { font-size: 18px; }
+    .row .why { font-size: 19px; }
+    .banner { grid-template-columns: 1fr; padding: 18px 16px 22px; gap: 6px; }
+    .banner .shield { display: none; }
+    .banner .big { font-size: 48px; }
+    .banner .b-summary { font-size: 20px; }
+    .banner .b-why { font-size: 19px; }
+    .banner .b-where { grid-row: auto; justify-self: start; font-size: 16px; }
   }
 </style>
 </head>
@@ -323,10 +390,19 @@
       <span><i style="background:var(--ask)"></i>Approved in dialog</span>
       <span><i style="background:var(--tid)"></i>Touch ID</span>
       <span><i style="background:var(--off)"></i>Failed</span>
+      <span><i style="background:var(--warn)"></i>Waiting for you</span>
     </div>
-    <div class="ledger" id="ledger"></div>
+    <div class="ledger"><div id="pending"></div><div id="ledger"></div></div>
   </section>
 </main>
+
+<div class="banner" id="banner" role="alert" aria-live="assertive" title="Click to dismiss" hidden>
+  <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6l8-3z"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+  <div class="b-head"><span class="big">Blocked</span><span class="b-tool" id="b-tool"></span></div>
+  <span class="b-where" id="b-where"></span>
+  <div class="what"><div class="b-summary" id="b-summary"></div><div class="b-why" id="b-why"></div></div>
+  <div class="b-bar"></div>
+</div>
 
 <script>
 (() => {
@@ -525,9 +601,11 @@
     if (!entries.length) {
       root.replaceChildren(h('div', { class: 'empty' }, h('strong', { text: 'No calls yet' }), 'Every agent call will land here, newest on top.'));
       seen.clear();
+      firstLedger = false;
       return;
     }
     const frag = document.createDocumentFragment();
+    const blocked = [];
     for (const e of entries) {
       const key = `${e.seq}:${e.hash}`;
       const isNew = !firstLedger && !seen.has(key);
@@ -538,12 +616,102 @@
         h('div', { class: 'body' },
           h('div', { class: 'tool', text: str(e.tool) + (e.agent && e.agent !== 'claude' ? ` · ${e.agent}` : '') }),
           h('div', { class: 'summary', text: str(e.summary) }),
-          e.returned ? h('div', { class: 'returned', text: str(e.returned) }) : null)));
+          str(e.why).trim() ? h('div', { class: 'why', text: str(e.why).trim() }) : null,
+          e.returned ? h('div', { class: 'returned', text: str(e.returned) }) : null,
+          renderWithheld(e.withheld))));
+      if (isNew && isBlocked(e)) blocked.push(e);
     }
+    if (blocked.length) showBanner(blocked[0]);
     seen.clear();
     for (const e of entries) seen.add(`${e.seq}:${e.hash}`);
     firstLedger = false;
     root.replaceChildren(frag);
+  }
+
+  function renderWithheld(w) {
+    if (!w) return null;
+    const fields = (Array.isArray(w) ? w : (w.fields || [])).map(str).filter(Boolean);
+    const records = Array.isArray(w) ? 0 : Number(w.records) || 0;
+    if (!fields.length && records <= 0) return null;
+    const box = h('div', { class: 'withheld' }, h('span', { class: 'lbl', text: 'Withheld:' }));
+    for (const f of fields) {
+      box.append(h('span', { class: 'redact', tabindex: '0', title: f, 'aria-label': `Withheld field: ${f}`, text: f }));
+    }
+    if (records > 0) box.append(h('span', { class: 'hid', text: `${records} ${records === 1 ? 'record' : 'records'} hidden` }));
+    return box;
+  }
+
+  function isBlocked(e) {
+    const d = str(e.decision).toLowerCase();
+    return d === 'denied' || d === 'touchid denied';
+  }
+
+  // ---------- Attack banner ----------
+  let bannerTimer = null;
+  function hideBanner() {
+    const b = $('banner');
+    b.classList.remove('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => { b.hidden = true; }, 500);
+  }
+  function showBanner(e) {
+    const b = $('banner');
+    const by = str(e.decidedBy).toLowerCase();
+    let where = '';
+    if (by === 'phone') where = 'Decided on iPhone';
+    else if (by === 'timeout') where = 'No answer, denied';
+    else if (by) where = 'Decided on Mac';
+    else if (str(e.decision).toLowerCase().startsWith('touchid')) where = 'Decided on Mac';
+    else where = 'Blocked by Leash';
+    $('b-summary').textContent = str(e.summary);
+    $('b-why').textContent = str(e.why).trim();
+    $('b-why').hidden = !str(e.why).trim();
+    $('b-tool').textContent = str(e.tool);
+    $('b-where').textContent = where;
+    clearTimeout(bannerTimer);
+    b.hidden = false;
+    b.classList.remove('show');
+    const bar = b.querySelector('.b-bar');
+    bar.style.animation = 'none';
+    void b.offsetWidth;
+    bar.style.animation = '';
+    requestAnimationFrame(() => b.classList.add('show'));
+    bannerTimer = setTimeout(hideBanner, 8000);
+  }
+  $('banner').addEventListener('click', hideBanner);
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') hideBanner(); });
+
+  // ---------- Waiting for you (pending phone approvals) ----------
+  let pending = [];
+  let pendingAt = 0;
+  let pendingSkew = 0;
+  function renderPending() {
+    const root = $('pending');
+    const now = Date.now() + pendingSkew;
+    const live = pending.filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now);
+    if (!live.length) { root.replaceChildren(); return; }
+    root.replaceChildren(...live.map((a) => {
+      const left = a.expiresAt ? Date.parse(a.expiresAt) - now : null;
+      const [appName] = APP[a.app] || [str(a.app)];
+      return h('div', { class: 'row d-warn pending', 'data-id': a.id },
+        h('div', { class: 'time' }, left == null ? '' : h('span', { class: 'left', text: fmtLeft(left) }), h('span', { class: 'seq', text: 'left' })),
+        h('div', null, h('span', { class: 'pill', text: 'Waiting for you' })),
+        h('div', { class: 'body' },
+          h('div', { class: 'tool', text: [str(a.tool) || appName, str(a.verb)].filter(Boolean).join(' · ') }),
+          h('div', { class: 'summary', text: str(a.summary) }),
+          str(a.why).trim() ? h('div', { class: 'why', text: str(a.why).trim() }) : null,
+          h('div', { class: 'where', text: 'Approve or deny on your iPhone. No answer means deny.' })));
+    }));
+  }
+  async function loadApprovals() {
+    try {
+      const res = await fetch('/api/approvals', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      pending = data.approvals || [];
+      if (data.now) pendingSkew = Date.parse(data.now) - Date.now();
+      renderPending();
+    } catch (e) { pending = []; renderPending(); }
   }
 
   async function loadLedger() {
@@ -560,26 +728,29 @@
     $('live').classList.toggle('on', on);
     $('live-text').textContent = on ? 'Live' : 'Polling';
     if (on && pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    if (!on && !pollTimer) pollTimer = setInterval(() => { loadGrants(); loadLedger(); }, 1000);
+    if (!on && !pollTimer) pollTimer = setInterval(() => { loadGrants(); loadLedger(); loadApprovals(); }, 1000);
   }
   function connect() {
     if (!('EventSource' in window)) { setLive(false); return; }
     const es = new EventSource('/api/events');
     es.addEventListener('open', () => setLive(true));
-    es.addEventListener('hello', () => { setLive(true); loadGrants(); loadLedger(); });
+    es.addEventListener('hello', () => { setLive(true); loadGrants(); loadLedger(); loadApprovals(); });
     es.addEventListener('change', (ev) => {
       let kinds = ['grants', 'ledger'];
       try { kinds = JSON.parse(ev.data).kinds || kinds; } catch {}
       if (kinds.includes('grants')) loadGrants();
       if (kinds.includes('ledger')) loadLedger();
+      if (kinds.includes('approvals') || kinds.includes('ledger')) loadApprovals();
     });
     es.addEventListener('error', () => setLive(false));
   }
 
   loadGrants();
   loadLedger();
+  loadApprovals();
   connect();
-  setInterval(tick, 1000);
+  setInterval(() => { tick(); if (pending.length) renderPending(); }, 1000);
+  setInterval(loadApprovals, 3000);
 })();
 </script>
 </body>
