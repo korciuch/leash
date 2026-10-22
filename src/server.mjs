@@ -90,10 +90,11 @@ export async function loadDeps() {
     import('./apple/preflight.mjs'), import('./consent/dialog.mjs'), import('./consent/touchid.mjs'), import('./drafts.mjs')
   ]);
   const askAnywhere = createAskAnywhere({ dialog, sendText: messages.sendText });
+  const { notify } = await import('./consent/notify.mjs');
   return {
     gate: { grants, policy, filter, ledger },
     apple: { calendar, reminders, mail, messages, preflight },
-    dialog, touchid, drafts, askAnywhere
+    dialog, touchid, drafts, askAnywhere, notify
   };
 }
 

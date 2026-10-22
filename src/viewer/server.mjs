@@ -7,6 +7,8 @@
 //   GET  /api/ledger?limit=200     { entries (newest first), verify: { entries, intact, brokenAt? } }
 //   GET  /api/events               Server-Sent Events: 'change' when grants.json, ledger.jsonl or approvals/ change
 //   GET  /api/approvals            { approvals: pending (tokens stripped), now }
+//   GET  /api/sources              { mail, calendars, lists, errors } (Apple names, cached 30 s)
+//   POST /api/grants               create a grant from the New grant card (validated)
 // Phone routes (the only routes reachable from a non-loopback address, token gated):
 //   GET  /a/:id?t=token            phone approval page (plain 404 on a bad id or token)
 //   GET  /api/approvals/:id?t=token  { approval, now } or 404
@@ -135,6 +137,64 @@ function notFound(res) {
   res.end('Not found');
 }
 
+const GRANT_SPEC = {
+  calendar: { verbs: ['read'], fields: ['title', 'start', 'end', 'location', 'notes'] },
+  mail: { verbs: ['read', 'draft', 'send'], fields: ['from', 'to', 'subject', 'date', 'body'] },
+  reminders: { verbs: ['read', 'create'], fields: ['title', 'notes', 'completed', 'due'] },
+};
+const EXPIRY_MIN = new Set([15, 60, 240]);
+const isName = (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 200;
+
+/**
+ * Validate a New grant request. Returns { grant } (a partial for addGrant) or { error }.
+ * @param {any} b
+ */
+export function grantFromRequest(b, now = Date.now()) {
+  if (!b || typeof b !== 'object') return { error: 'Send a JSON object.' };
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (name.length < 1 || name.length > 60) return { error: 'Name must be 1 to 60 characters.' };
+  const spec = GRANT_SPEC[b.app];
+  if (!spec) return { error: 'App must be calendar, mail or reminders.' };
+  const verbs = Array.isArray(b.verbs) ? [...new Set(b.verbs)] : [];
+  if (!verbs.length) return { error: 'Pick at least one verb.' };
+  const badVerb = verbs.find((v) => !spec.verbs.includes(v));
+  if (badVerb !== undefined) return { error: `${b.app} grants allow only: ${spec.verbs.join(', ')} (got "${String(badVerb)}").` };
+  const r = b.records && typeof b.records === 'object' ? b.records : {};
+  let records;
+  if (b.app === 'calendar') {
+    const calendars = Array.isArray(r.calendars) ? [...new Set(r.calendars)] : [];
+    if (!calendars.length || !calendars.every(isName)) return { error: 'Pick at least one calendar.' };
+    const windowDays = Number(r.windowDays);
+    if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 31) return { error: 'Next N days must be a whole number from 1 to 31.' };
+    records = { calendars, windowDays };
+  } else if (b.app === 'mail') {
+    const boxes = Array.isArray(r.mailboxes) ? r.mailboxes : [];
+    if (!boxes.length || !boxes.every((m) => m && isName(m.account) && isName(m.mailbox))) return { error: 'Pick at least one mailbox.' };
+    const sinceDays = Number(r.sinceDays);
+    if (!Number.isInteger(sinceDays) || sinceDays < 1 || sinceDays > 365) return { error: 'Last N days must be a whole number from 1 to 365.' };
+    records = { mailboxes: boxes.map((m) => ({ account: m.account, mailbox: m.mailbox })), sinceDays };
+  } else {
+    const lists = Array.isArray(r.lists) ? [...new Set(r.lists)] : [];
+    if (!lists.length || !lists.every(isName)) return { error: 'Pick at least one list.' };
+    records = { lists };
+  }
+  const fields = Array.isArray(b.fields) ? [...new Set(b.fields)] : [];
+  if (!fields.length) return { error: 'Pick at least one field.' };
+  const star = b.app === 'reminders' && fields.length === 1 && fields[0] === '*';
+  if (!star) {
+    const badField = fields.find((f) => !spec.fields.includes(f));
+    if (badField !== undefined) return { error: `Unknown ${b.app} field "${String(badField)}". Known: ${spec.fields.join(', ')}.` };
+  }
+  let expiresAt = null;
+  if (b.expiresInMin !== null && b.expiresInMin !== undefined) {
+    if (!EXPIRY_MIN.has(b.expiresInMin)) return { error: 'Expiry must be 15, 60 or 240 minutes, or this session.' };
+    expiresAt = new Date(now + b.expiresInMin * 60e3).toISOString();
+  } else if (b.expiresInMin === undefined) {
+    return { error: 'Pick an expiry.' };
+  }
+  return { grant: { name, app: b.app, verbs, records, fields, expiresAt, source: 'viewer' } };
+}
+
 /** Load the real gate modules (Lane A). */
 export async function loadGate() {
   const [grants, ledger, paths] = await Promise.all([
@@ -182,7 +242,7 @@ function stamp(file) {
 
 /**
  * Start the viewer.
- * @param {{ port?: number, host?: string, gate?: any, approvals?: any, pollMs?: number, isLocal?: (req: http.IncomingMessage) => boolean }} [opts]
+ * @param {{ port?: number, host?: string, gate?: any, approvals?: any, sources?: () => Promise<any>, pollMs?: number, isLocal?: (req: http.IncomingMessage) => boolean }} [opts]
  * @returns {Promise<{ server: http.Server, port: number, url: string, close: () => Promise<void> }>}
  */
 export async function startViewer(opts = {}) {
@@ -197,6 +257,11 @@ export async function startViewer(opts = {}) {
   }
   const port = opts.port ?? Number(process.env.LEASH_VIEWER_PORT ?? 4777);
   const pollMs = opts.pollMs ?? 1000;
+  const sourcesRunner = opts.sources ?? (async () => {
+    const { runScript } = await import('../apple/jxa.mjs');
+    return runScript('sources', {}, { timeoutMs: 20000 });
+  });
+  let sourcesCache = null;
 
   P.ensureHome?.();
   // Make sure grants.json exists (loadGrants seeds it when missing).
@@ -322,6 +387,38 @@ export async function startViewer(opts = {}) {
         sendJson(res, 200, { approvals: pending, now: new Date(now).toISOString() });
         return;
       }
+      if (req.method === 'GET' && p === '/api/sources') {
+        if (!sourcesCache || Date.now() - sourcesCache.at > 30000) {
+          try {
+            sourcesCache = { at: Date.now(), data: await sourcesRunner() };
+          } catch (err) {
+            sendJson(res, 502, { error: String(err?.message ?? err), fix: err?.fix ?? null });
+            return;
+          }
+        }
+        sendJson(res, 200, sourcesCache.data);
+        return;
+      }
+
+      if (req.method === 'POST' && p === '/api/grants') {
+        let body;
+        try { body = JSON.parse((await readBody(req)) || 'null'); } catch (e) {
+          res.writeHead(e.status ?? 400, { 'content-type': 'text/plain; charset=utf-8' });
+          res.end('Send the grant as JSON.');
+          return;
+        }
+        const out = grantFromRequest(body);
+        if (out.error) {
+          res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+          res.end(out.error);
+          return;
+        }
+        const grant = G.addGrant(out.grant);
+        check();
+        sendJson(res, 200, { grant });
+        return;
+      }
+
       if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = fs.readFileSync(indexPath);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });

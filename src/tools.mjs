@@ -116,7 +116,14 @@ export function createTools(deps) {
     };
     if (action.decidedBy) entry.decidedBy = action.decidedBy;
     if (action.approvalId) entry.approvalId = action.approvalId;
-    return gate.ledger.append({ ...entry, ...fields });
+    const written = gate.ledger.append({ ...entry, ...fields });
+    const d = String(fields && fields.decision || '');
+    if ((d === 'denied' || d === 'touchid denied') && typeof deps.notify === 'function') {
+      try {
+        deps.notify({ title: 'Leash blocked a request', subtitle: entry.summary, body: entry.why ? `Agent's reason: "${entry.why}"` : '' });
+      } catch {}
+    }
+    return written;
   }
 
   function dialogMessage(action, decision, detail) {

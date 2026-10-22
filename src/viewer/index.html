@@ -290,33 +290,31 @@
   .row.pending { animation: wait 2s ease-in-out infinite; }
   @keyframes wait { 50% { background: color-mix(in srgb, var(--warn-bg) 60%, var(--panel)); } }
 
-  /* Attack banner */
+  /* Blocked toast: a quiet card in the corner, like a system notification */
   .banner {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-    background: #c0322a; color: #fff;
-    padding: 26px 48px 30px;
-    display: grid; grid-template-columns: auto 1fr auto; gap: 8px 32px; align-items: center;
-    box-shadow: 0 20px 60px -20px rgba(120, 0, 0, .7);
-    transform: translateY(-110%); transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+    position: fixed; top: 20px; right: 20px; z-index: 50;
+    width: min(400px, calc(100vw - 32px));
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-left: 4px solid #c0322a; border-radius: 14px;
+    padding: 14px 16px 16px; overflow: hidden;
+    display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: start;
+    box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .35);
+    transform: translateX(calc(100% + 40px)); transition: transform .35s cubic-bezier(.2, .8, .2, 1);
     cursor: pointer;
   }
   .banner.show { transform: none; }
-  .banner .shield { width: 84px; height: 84px; grid-row: span 2; }
-  .banner .big { font-size: 72px; font-weight: 700; line-height: .95; letter-spacing: -0.03em; }
-  .banner .what { min-width: 0; }
-  .banner .b-summary { font-size: 28px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
-  .banner .b-why { font-family: var(--serif); font-style: italic; font-size: 26px; line-height: 1.2; opacity: .92; margin-top: 4px; overflow-wrap: anywhere; }
-  .banner .b-why::before { content: "The agent said: \201C"; font-family: var(--sans); font-style: normal; font-size: 18px; opacity: .8; }
+  .banner .shield { width: 22px; height: 22px; color: #c0322a; grid-row: span 3; margin-top: 2px; }
+  .banner .big { font-size: 15px; font-weight: 700; color: #c0322a; letter-spacing: 0; }
+  .banner .what { min-width: 0; grid-column: 2; }
+  .banner .b-summary { font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .banner .b-why { font-family: var(--serif); font-style: italic; font-size: 14px; line-height: 1.3; color: var(--ink-3); margin-top: 2px; overflow-wrap: anywhere; }
+  .banner .b-why::before { content: "\201C"; }
   .banner .b-why::after { content: "\201D"; }
-  .banner .b-where {
-    grid-row: span 2; align-self: center; white-space: nowrap;
-    font-size: 20px; font-weight: 700; padding: 10px 18px; border-radius: 999px;
-    background: rgba(255, 255, 255, .18); border: 1.5px solid rgba(255, 255, 255, .5);
-  }
-  .banner .b-head { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
-  .banner .b-tool { font-family: var(--mono); font-size: 18px; opacity: .8; }
-  .banner .b-bar { position: absolute; left: 0; bottom: 0; height: 5px; background: rgba(255, 255, 255, .7); width: 100%; transform-origin: left; }
-  .banner.show .b-bar { animation: drain 8s linear forwards; }
+  .banner .b-where { grid-column: 2; font-size: 12px; color: var(--ink-3); }
+  .banner .b-head { display: flex; align-items: baseline; gap: 8px; grid-column: 2; }
+  .banner .b-tool { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .banner .b-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: #c0322a; opacity: .5; width: 100%; transform-origin: left; }
+  .banner.show .b-bar { animation: drain 6s linear forwards; }
   @keyframes drain { to { transform: scaleX(0); } }
   .row.enter { animation: enter .9s cubic-bezier(.2, .8, .2, 1); }
   @keyframes enter {
@@ -354,13 +352,49 @@
     .row .body { grid-column: 1 / -1; }
     .row .summary { font-size: 18px; }
     .row .why { font-size: 19px; }
-    .banner { grid-template-columns: 1fr; padding: 18px 16px 22px; gap: 6px; }
-    .banner .shield { display: none; }
-    .banner .big { font-size: 48px; }
-    .banner .b-summary { font-size: 20px; }
-    .banner .b-why { font-size: 19px; }
-    .banner .b-where { grid-row: auto; justify-self: start; font-size: 16px; }
+    .banner { top: 12px; right: 12px; }
   }
+  /* New grant */
+  .grants-head { display: flex; align-items: baseline; gap: 12px; }
+  .grants-head h2 { flex: 1; }
+  button.ng-open, .ng button {
+    font: inherit; font-size: 17px; font-weight: 600; cursor: pointer;
+    padding: 7px 16px; border-radius: 10px;
+    background: var(--panel); color: var(--accent);
+    border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  button.ng-open:hover { background: var(--accent); color: var(--panel); }
+  button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 2px; }
+  .ng { margin-bottom: 14px; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .ng h3 { margin-bottom: 4px; }
+  .ng .row2 { margin-top: 14px; }
+  .ng .lbl { display: block; font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .ng input[type=text], .ng input[type=number], .ng select {
+    font: inherit; font-size: 18px; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px;
+  }
+  .ng input[type=text] { width: 100%; }
+  .ng input[type=number] { width: 84px; font-family: var(--mono); }
+  .ng select { min-width: 200px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel-2); flex-wrap: wrap; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--ink-2); padding: 7px 14px; font-size: 17px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .checks label { cursor: pointer; user-select: none; }
+  .checks input { position: absolute; opacity: 0; pointer-events: none; }
+  .checks .chip { color: var(--ink-2); font-weight: 500; }
+  .checks input:not(:checked) + .chip { background: var(--panel-2); border-color: var(--line); }
+  .checks input:checked + .chip { background: var(--ok-bg); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); font-weight: 600; }
+  .checks input:checked + .chip.t3 { background: var(--tid-bg); color: var(--tid); border-color: color-mix(in srgb, var(--tid) 45%, transparent); }
+  .checks input:focus-visible + .chip { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 2px; }
+  .ng .days { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 18px; margin-top: 10px; }
+  .ng .muted { color: var(--ink-3); font-size: 17px; }
+  .ng .acts { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
+  .ng .acts .grow { flex: 1; }
+  .ng button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .ng button.ghost { color: var(--ink-2); border-color: var(--line); }
+  .ng button:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
@@ -379,7 +413,11 @@
 
 <main>
   <section aria-labelledby="grants-h">
-    <h2 id="grants-h">Grants <span class="count" id="grants-count"></span></h2>
+    <div class="grants-head">
+      <h2 id="grants-h">Grants <span class="count" id="grants-count"></span></h2>
+      <button type="button" class="ng-open" id="ng-open">+ New grant</button>
+    </div>
+    <div class="card ng" id="new-grant" hidden></div>
     <div class="grants" id="grants"></div>
   </section>
   <section aria-labelledby="ledger-h">
@@ -676,7 +714,7 @@
     void b.offsetWidth;
     bar.style.animation = '';
     requestAnimationFrame(() => b.classList.add('show'));
-    bannerTimer = setTimeout(hideBanner, 8000);
+    bannerTimer = setTimeout(hideBanner, 6000);
   }
   $('banner').addEventListener('click', hideBanner);
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') hideBanner(); });
@@ -751,6 +789,156 @@
   connect();
   setInterval(() => { tick(); if (pending.length) renderPending(); }, 1000);
   setInterval(loadApprovals, 3000);
+})();
+</script>
+<script>
+(() => {
+  'use strict';
+  // New grant card. All Apple names are rendered with textContent.
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = String(v);
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, String(v));
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  const SPEC = {
+    mail: { label: 'Mail', verbs: ['read', 'draft', 'send'], fields: ['from', 'to', 'subject', 'date', 'body'], dflt: ['from', 'subject', 'date', 'body'] },
+    calendar: { label: 'Calendar', verbs: ['read'], fields: ['title', 'start', 'end', 'location', 'notes'], dflt: ['title', 'start', 'end'] },
+    reminders: { label: 'Reminders', verbs: ['read', 'create'], fields: ['title', 'notes', 'completed', 'due'], dflt: ['title', 'notes', 'completed', 'due'] },
+  };
+  const TIER = { read: 't0', draft: 't1', create: 't1', send: 't3' };
+  const EXPIRY = [['15 min', 15], ['1 hour', 60], ['4 hours', 240], ['This session', null]];
+  const root = document.getElementById('new-grant');
+  const openBtn = document.getElementById('ng-open');
+  let sources = null; // null = not loaded, { error } or data
+  let st = null;
+
+  function fresh() {
+    return { name: '', app: 'mail', account: null, mailboxes: new Set(), sinceDays: 30, calendars: new Set(), windowDays: 7, lists: new Set(),
+      verbs: new Set(['read']), fields: new Set(SPEC.mail.dflt), expires: 60, error: '', busy: false };
+  }
+  function seg(options, current, pick) {
+    return h('div', { class: 'seg', role: 'group' }, options.map(([label, val]) =>
+      h('button', { type: 'button', 'aria-pressed': String(val === current), onclick: () => pick(val), text: label })));
+  }
+  function checks(items, set, label, tier) {
+    return h('div', { class: 'checks' }, items.map((it) => {
+      const input = h('input', { type: 'checkbox' });
+      input.checked = set.has(it);
+      input.addEventListener('change', () => { input.checked ? set.add(it) : set.delete(it); });
+      return h('label', null, input, h('span', { class: 'chip' + (tier ? ' ' + (tier(it) || '') : ''), text: label ? label(it) : it }));
+    }));
+  }
+  function block(title, ...kids) { return h('div', { class: 'row2' }, h('span', { class: 'lbl', text: title }), ...kids); }
+  function daysInput(prefix, value, max, set) {
+    const inp = h('input', { type: 'number', min: 1, max, value });
+    inp.addEventListener('input', () => set(Number(inp.value)));
+    return h('label', { class: 'days' }, prefix, inp, 'days');
+  }
+
+  function scopeBlock() {
+    if (!sources) return block('Scope', h('div', { class: 'muted', text: 'Reading your accounts...' }));
+    if (sources.error) return block('Scope', h('div', { class: 'error', text: sources.error }),
+      h('div', { class: 'acts' }, h('button', { type: 'button', class: 'ghost', onclick: loadSources, text: 'Retry' })));
+    const appErr = (sources.errors || []).filter((e) => e && String(e.app).toLowerCase() === st.app).map((e) => h('div', { class: 'error', text: `${e.app}: ${e.message}` }));
+    if (st.app === 'mail') {
+      const accts = sources.mail || [];
+      if (!accts.length) return block('Mailboxes', appErr, h('div', { class: 'muted', text: 'No Mail accounts found.' }));
+      if (!accts.some((a) => a.account === st.account)) st.account = accts[0].account;
+      const sel = h('select', { 'aria-label': 'Account' }, accts.map((a) => { const o = h('option', { text: a.account }); o.value = a.account; return o; }));
+      sel.value = st.account;
+      sel.addEventListener('change', () => { st.account = sel.value; st.mailboxes = new Set(); render(); });
+      const acct = accts.find((a) => a.account === st.account);
+      return h('div', null, block('Account', appErr, sel),
+        block('Mailboxes', (acct.mailboxes || []).length ? checks(acct.mailboxes, st.mailboxes) : h('div', { class: 'muted', text: 'No mailboxes in this account.' }),
+          daysInput('Last', st.sinceDays, 365, (n) => { st.sinceDays = n; })));
+    }
+    if (st.app === 'calendar') {
+      const cals = sources.calendars || [];
+      return block('Calendars', appErr, cals.length ? checks(cals, st.calendars) : h('div', { class: 'muted', text: 'No calendars found.' }),
+        daysInput('Next', st.windowDays, 31, (n) => { st.windowDays = n; }));
+    }
+    const lists = sources.lists || [];
+    return block('Lists', appErr, lists.length ? checks(lists, st.lists) : h('div', { class: 'muted', text: 'No lists found.' }));
+  }
+
+  function render() {
+    root.replaceChildren();
+    if (!st) { root.hidden = true; openBtn.hidden = false; return; }
+    root.hidden = false; openBtn.hidden = true;
+    const spec = SPEC[st.app];
+    const name = h('input', { type: 'text', maxlength: 60, placeholder: 'e.g. Triage the demo inbox', 'aria-label': 'Grant name' });
+    name.value = st.name;
+    name.addEventListener('input', () => { st.name = name.value; });
+    root.append(
+      h('h3', { text: 'New grant' }),
+      block('Name', name),
+      block('App', seg(Object.entries(SPEC).map(([k, v]) => [v.label, k]), st.app, (app) => {
+        if (app === st.app) return;
+        st.app = app; st.verbs = new Set(['read']); st.fields = new Set(SPEC[app].dflt); st.error = ''; render();
+      })),
+      scopeBlock(),
+      block('Verbs', checks(spec.verbs, st.verbs, (v) => (v === 'send' ? 'send (Touch ID every time)' : v), (v) => TIER[v])),
+      block('Fields', checks(spec.fields, st.fields)),
+      block('Expires', seg(EXPIRY, st.expires, (v) => { st.expires = v; render(); })),
+      ...(st.error ? [h('div', { class: 'error', role: 'alert', text: st.error })] : []),
+      h('div', { class: 'acts' },
+        h('button', { type: 'button', class: 'primary', disabled: st.busy || null, onclick: create, text: st.busy ? 'Creating' : 'Create grant' }),
+        h('button', { type: 'button', class: 'ghost', onclick: close, text: 'Cancel' }),
+        h('span', { class: 'grow' })),
+    );
+  }
+
+  async function loadSources() {
+    sources = null; render();
+    try {
+      const res = await fetch('/api/sources', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({ error: 'The viewer sent something unreadable.' }));
+      sources = res.ok ? data : { error: data.error || `Could not read your accounts (${res.status}).` };
+    } catch (e) {
+      sources = { error: 'Could not reach the viewer.' };
+    }
+    if (st) render();
+  }
+
+  function body() {
+    const records = st.app === 'mail'
+      ? { mailboxes: [...st.mailboxes].map((m) => ({ account: st.account, mailbox: m })), sinceDays: st.sinceDays }
+      : st.app === 'calendar' ? { calendars: [...st.calendars], windowDays: st.windowDays } : { lists: [...st.lists] };
+    const all = SPEC[st.app].fields;
+    const fields = st.app === 'reminders' && all.every((f) => st.fields.has(f)) ? ['*'] : all.filter((f) => st.fields.has(f));
+    return { name: st.name.trim(), app: st.app, verbs: SPEC[st.app].verbs.filter((v) => st.verbs.has(v)), records, fields, expiresInMin: st.expires };
+  }
+
+  async function create() {
+    st.busy = true; st.error = ''; render();
+    try {
+      const res = await fetch('/api/grants', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body()) });
+      if (res.ok) { close(); return; }
+      st.error = (await res.text()) || `Could not create the grant (${res.status}).`;
+    } catch (e) {
+      st.error = 'Could not reach the viewer.';
+    }
+    st.busy = false; render();
+  }
+
+  function open() {
+    st = fresh(); render();
+    root.querySelector('input[type=text]')?.focus();
+    if (!sources || sources.error) loadSources();
+  }
+  function close() { st = null; render(); openBtn.focus(); }
+  openBtn.addEventListener('click', open);
+  root.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 })();
 </script>
 </body>

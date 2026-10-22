@@ -18,7 +18,8 @@ export const SCRIPT_APPS = {
   'mail-read': 'Mail',
   'mail-send': 'Mail',
   'messages-send': 'Messages',
-  ping: null
+  ping: null,
+  sources: null
 };
 
 export const DEFAULT_TIMEOUT_MS = 30000;
