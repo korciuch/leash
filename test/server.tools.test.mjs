@@ -226,7 +226,9 @@ test('phone approval through askAnywhere still needs Touch ID on the Mac', async
     dialog: { start: () => ({ result: new Promise(() => {}), cancel() { killed = true; } }) },
     sendText: async (q) => {
       phoneTexts.push(q.text);
-      const u = new URL(/http\S+/.exec(q.text)[0]);
+      const m = /http\S+/.exec(q.text);
+      if (!m) return { sent: 1 };
+      const u = new URL(m[0]);
       setTimeout(() => approvals.decideApproval(u.pathname.split('/').pop(), u.searchParams.get('t'), 'once'), 10);
       return { sent: 1 };
     }

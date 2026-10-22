@@ -74,7 +74,7 @@ test('phone decides first: dialog child is killed and the approval is marked pho
   const texts = [];
   const ask = createAskAnywhere({
     dialog, phone: '+15550009999', pollMs: 10,
-    sendText: async (q) => { texts.push(q); const { id, token } = parse(/http\S+/.exec(q.text)[0]); setTimeout(() => approvals.decideApproval(id, token, 'hour'), 20); return { sent: 1 }; }
+    sendText: async (q) => { texts.push(q); const m = /http\S+/.exec(q.text); if (m) { const { id, token } = parse(m[0]); setTimeout(() => approvals.decideApproval(id, token, 'hour'), 20); } return { sent: 1 }; }
   });
   const r = await ask({ action, why: 'Tell Sam I am late', message: 'Claude wants to: send', timeoutSec: 5 });
   assert.equal(r.choice, 'hour');
@@ -82,15 +82,16 @@ test('phone decides first: dialog child is killed and the approval is marked pho
   assert.equal(dialog.state.killed, true);
   assert.deepEqual(texts[0].recipients, ['+15550009999']);
   assert.match(texts[0].text, /Why \(agent's words\): "Tell Sam I am late"/);
-  assert.match(texts[0].text, /\/a\/a_[0-9a-f]+\?t=/);
-  assert.match(dialog.state.shown[0], /answer on your phone/);
+  assert.match(texts[0].text, /Reply YES \d{4} or NO \d{4}/);
+  assert.match(texts.map((t) => t.text).join('\n'), /\/a\/a_[0-9a-f]+\?t=/);
+  assert.match(dialog.state.shown[0], /phone/);
   assert.equal(approvals.getApproval(r.approvalId).decidedBy, 'phone');
 });
 
 test('Mac decides first: approval marked mac, phone link then refused', async () => {
   const dialog = fakeDialog();
   let link;
-  const ask = createAskAnywhere({ dialog, phone: '+15550009999', pollMs: 10, sendText: async (q) => { link = parse(/http\S+/.exec(q.text)[0]); return { sent: 1 }; } });
+  const ask = createAskAnywhere({ dialog, phone: '+15550009999', pollMs: 10, sendText: async (q) => { const m = /http\S+/.exec(q.text); if (m) link = parse(m[0]); return { sent: 1 }; } });
   const pending = ask({ action, why: 'Tell Sam I am late', message: 'm', timeoutSec: 5 });
   setTimeout(() => dialog.state.answer('once'), 20);
   const r = await pending;
