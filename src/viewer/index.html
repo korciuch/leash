@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #fbfaf6;
+    --panel-2: #efebe2;
+    --ink: #15171c;
+    --ink-2: #4a4e57;
+    --ink-3: #7b7f88;
+    --line: #dcd6c9;
+    --accent: #1f5f4a;
+
+    --ok: #157a46;      --ok-bg: #e2f2e8;
+    --bad: #c0322a;     --bad-bg: #fbe5e2;
+    --ask: #2357c9;     --ask-bg: #e3ebfb;
+    --tid: #7438d6;     --tid-bg: #efe6fc;
+    --off: #6c7079;     --off-bg: #e9e7e2;
+    --warn: #b86a00;    --warn-bg: #fdf0d9;
+
+    --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --shadow: 0 1px 0 rgba(20, 20, 20, .04), 0 8px 24px -16px rgba(20, 20, 20, .25);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1013;
+      --panel: #16191e;
+      --panel-2: #1d2128;
+      --ink: #eef0f3;
+      --ink-2: #b4b9c2;
+      --ink-3: #868c96;
+      --line: #2a2f37;
+      --accent: #6fd3a8;
+      --ok: #4ad68c;      --ok-bg: #12301f;
+      --bad: #ff6f63;     --bad-bg: #3a1714;
+      --ask: #7aa7ff;     --ask-bg: #172747;
+      --tid: #c49bff;     --tid-bg: #2c1c4a;
+      --off: #9aa0aa;     --off-bg: #23272e;
+      --warn: #ffb547;    --warn-bg: #3a2a0c;
+      --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 30px -18px rgba(0, 0, 0, .8);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1013;
+    --panel: #16191e;
+    --panel-2: #1d2128;
+    --ink: #eef0f3;
+    --ink-2: #b4b9c2;
+    --ink-3: #868c96;
+    --line: #2a2f37;
+    --accent: #6fd3a8;
+    --ok: #4ad68c;      --ok-bg: #12301f;
+    --bad: #ff6f63;     --bad-bg: #3a1714;
+    --ask: #7aa7ff;     --ask-bg: #172747;
+    --tid: #c49bff;     --tid-bg: #2c1c4a;
+    --off: #9aa0aa;     --off-bg: #23272e;
+    --warn: #ffb547;    --warn-bg: #3a2a0c;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 30px -18px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 20px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 40px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: baseline; gap: 18px; min-width: 0; }
+  .wordmark {
+    font-family: var(--serif);
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    margin: 0;
+    font-weight: 400;
+  }
+  .wordmark i { color: var(--accent); font-style: italic; }
+  .tagline { color: var(--ink-3); font-size: 19px; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .live {
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--ink-3); font-size: 17px; font-weight: 500;
+  }
+  .live .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); }
+  .live.on .dot { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2.4s ease-out infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); }
+    70% { box-shadow: 0 0 0 10px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .chain {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 10px 18px 10px 14px;
+    border-radius: 999px;
+    font-weight: 600; font-size: 19px;
+    background: var(--ok-bg); color: var(--ok);
+    border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+    white-space: nowrap;
+  }
+  .chain svg { width: 22px; height: 22px; flex: none; }
+  .chain.broken { background: var(--bad-bg); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(400px, 36%) 1fr;
+    gap: 36px;
+    padding: 22px 40px 40px;
+    align-items: start;
+  }
+  h2 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  h2 .count { font-family: var(--mono); letter-spacing: 0; text-transform: none; font-weight: 500; }
+
+  /* Grants */
+  .grants { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px 20px 14px;
+    box-shadow: var(--shadow);
+    transition: opacity .3s ease, filter .3s ease;
+  }
+  .card-top { display: flex; align-items: flex-start; gap: 16px; }
+  .card-title { flex: 1; min-width: 0; }
+  .card h3 { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+  .app {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 6px;
+    color: var(--ink-2); font-size: 18px; font-weight: 500;
+  }
+  .app .glyph {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: inline-grid; place-items: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .glyph.calendar { background: #e0483e; }
+  .glyph.reminders { background: #f29a1f; }
+  .glyph.mail { background: #2f7ef0; }
+  .glyph.messages { background: #2fb34f; }
+  .clock { text-align: right; flex: none; }
+  .clock .t {
+    font-family: var(--mono); font-size: 34px; font-weight: 600; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .clock .sub { font-size: 15px; color: var(--ink-3); margin-top: 6px; }
+  .clock.session .t { font-family: var(--sans); font-size: 20px; font-weight: 600; color: var(--ink-2); padding-top: 6px; }
+  .clock.amber .t { color: var(--warn); }
+  .state {
+    display: inline-block; padding: 6px 12px; border-radius: 8px;
+    font-size: 18px; font-weight: 700; letter-spacing: .02em;
+  }
+  .state.expired { background: var(--off-bg); color: var(--off); }
+  .state.revoked { background: var(--bad-bg); color: var(--bad); }
+
+  .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+  .chips .grow { flex: 1; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 17px; font-weight: 600;
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .chip.t1 { background: var(--ask-bg); color: var(--ask); border-color: transparent; }
+  .chip.t2 { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .chip.t3 { background: var(--tid-bg); color: var(--tid); border-color: transparent; }
+  .chip.t0 { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .chip small { font-weight: 500; opacity: .85; font-size: 14px; }
+
+  dl.scope { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; font-size: 18px; }
+  dl.scope dt { color: var(--ink-3); font-weight: 500; }
+  dl.scope dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+  dl.scope dd .f { font-family: var(--mono); font-size: 16px; }
+
+  .card-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .card-foot .src { color: var(--ink-3); font-size: 15px; flex: 1; }
+  button.revoke {
+    font: inherit; font-size: 17px; font-weight: 600;
+    padding: 7px 18px; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--bad);
+    border: 1.5px solid color-mix(in srgb, var(--bad) 55%, transparent);
+    transition: background .15s ease, color .15s ease;
+  }
+  button.revoke:hover { background: var(--bad); color: #fff; }
+  button.revoke:focus-visible { outline: 3px solid color-mix(in srgb, var(--bad) 40%, transparent); outline-offset: 2px; }
+  button.revoke:disabled { opacity: .5; cursor: default; }
+  .card.inactive { opacity: .55; filter: saturate(.4); }
+  .card.inactive .chips, .card.inactive dl { opacity: .8; }
+
+  /* Ledger */
+  .ledger {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -4px 0 14px; font-size: 15px; color: var(--ink-3); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .row {
+    display: grid;
+    grid-template-columns: 100px 180px minmax(0, 1fr);
+    gap: 4px 20px;
+    padding: 14px 22px 14px 18px;
+    border-bottom: 1px solid var(--line);
+    border-left: 6px solid var(--c, var(--off));
+    align-items: start;
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .time { font-family: var(--mono); font-size: 18px; color: var(--ink-2); padding-top: 4px; font-variant-numeric: tabular-nums; }
+  .row .seq { display: block; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+  .pill {
+    display: inline-block; justify-self: start;
+    padding: 5px 12px; border-radius: 8px;
+    font-size: 16px; font-weight: 700; letter-spacing: .01em;
+    background: var(--cb, var(--off-bg)); color: var(--c, var(--off));
+    white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row .body { min-width: 0; }
+  .row .tool { font-family: var(--mono); font-size: 15px; color: var(--ink-3); }
+  .row .summary { font-size: 21px; font-weight: 500; margin-top: 2px; overflow-wrap: anywhere; }
+  .row .returned { font-size: 17px; color: var(--ink-2); margin-top: 4px; overflow-wrap: anywhere; }
+  .row .returned::before { content: "Returned: "; color: var(--ink-3); }
+  .d-ok  { --c: var(--ok);  --cb: var(--ok-bg); }
+  .d-bad { --c: var(--bad); --cb: var(--bad-bg); }
+  .d-ask { --c: var(--ask); --cb: var(--ask-bg); }
+  .d-tid { --c: var(--tid); --cb: var(--tid-bg); }
+  .d-off { --c: var(--off); --cb: var(--off-bg); }
+  .row.enter { animation: enter .9s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes enter {
+    0% { opacity: 0; transform: translateY(-10px); background: var(--cb); }
+    25% { opacity: 1; transform: none; background: var(--cb); }
+    100% { background: transparent; }
+  }
+  .empty { padding: 48px 24px; text-align: center; color: var(--ink-3); font-size: 20px; }
+  .empty strong { display: block; color: var(--ink-2); font-size: 24px; margin-bottom: 6px; font-weight: 600; }
+  .error { color: var(--bad); font-size: 17px; margin-top: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .row.enter, .live.on .dot { animation: none; }
+  }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; }
+    .grants { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    body { font-size: 17px; }
+    header { flex-wrap: wrap; padding: 16px; gap: 12px; }
+    .wordmark { font-size: 44px; }
+    .tagline { display: none; }
+    .spacer { display: none; }
+    .chain { font-size: 16px; padding: 8px 14px 8px 12px; }
+    main { padding: 18px 16px 32px; gap: 28px; }
+    .grants { grid-template-columns: 1fr; }
+    .card h3 { font-size: 24px; }
+    .clock .t { font-size: 28px; }
+    .row { grid-template-columns: auto 1fr; padding: 14px 16px 14px 14px; gap: 8px 12px; }
+    .row .time { padding-top: 3px; font-size: 16px; }
+    .row .seq { display: inline; margin-left: 6px; }
+    .row .pill { justify-self: end; }
+    .row .body { grid-column: 1 / -1; }
+    .row .summary { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1 class="wordmark">Lea<i>sh</i></h1>
+    <span class="tagline">Scoped, expiring, logged consent for your agent</span>
+  </div>
+  <div class="spacer"></div>
+  <span class="live" id="live"><span class="dot"></span><span id="live-text">Connecting</span></span>
+  <span class="chain" id="chain" role="status">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>
+    <span id="chain-text">Checking chain</span>
+  </span>
+</header>
+
+<main>
+  <section aria-labelledby="grants-h">
+    <h2 id="grants-h">Grants <span class="count" id="grants-count"></span></h2>
+    <div class="grants" id="grants"></div>
+  </section>
+  <section aria-labelledby="ledger-h">
+    <h2 id="ledger-h">Ledger <span class="count" id="ledger-count"></span></h2>
+    <div class="legend" aria-hidden="true">
+      <span><i style="background:var(--ok)"></i>Allowed</span>
+      <span><i style="background:var(--bad)"></i>Denied</span>
+      <span><i style="background:var(--ask)"></i>Approved in dialog</span>
+      <span><i style="background:var(--tid)"></i>Touch ID</span>
+      <span><i style="background:var(--off)"></i>Failed</span>
+    </div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  // All server data is rendered with textContent. Ledger text can contain attacker-controlled email text.
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = String(v);
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, String(v));
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  const $ = (id) => document.getElementById(id);
+  const str = (v) => (v == null ? '' : String(v));
+
+  const APP = {
+    calendar: ['Calendar', 'C'],
+    reminders: ['Reminders', 'R'],
+    mail: ['Mail', 'M'],
+    messages: ['Messages', 'T'],
+  };
+  const TIER = { read: 0, create: 1, draft: 1, modify: 2, send: 3, delete: 3 };
+
+  function decisionClass(d) {
+    const s = str(d).toLowerCase();
+    if (s.startsWith('touchid')) return s.includes('denied') ? 'd-bad' : 'd-tid';
+    if (s.startsWith('approved')) return 'd-ask';
+    if (s === 'allowed' || s === 'allow') return 'd-ok';
+    if (s.includes('denied') || s === 'deny') return 'd-bad';
+    return 'd-off';
+  }
+  function decisionLabel(d) {
+    const s = str(d);
+    if (s === 'touchid approved') return 'Touch ID approved';
+    if (s === 'touchid denied') return 'Touch ID denied';
+    return s ? s[0].toUpperCase() + s.slice(1) : 'Unknown';
+  }
+
+  // ---------- Grants ----------
+  let grants = [];
+  let fetchedAt = 0;
+
+  function fmtLeft(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+    const p = (n) => String(n).padStart(2, '0');
+    return hh > 0 ? `${hh}:${p(mm)}:${p(ss)}` : `${p(mm)}:${p(ss)}`;
+  }
+  function fmtClock(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function scopeRows(g) {
+    const r = g.records || {};
+    const rows = [];
+    if (r.calendars && r.calendars.length) rows.push(['Calendars', r.calendars.join(', ')]);
+    if (r.windowDays != null) rows.push(['Window', `Next ${r.windowDays} day${r.windowDays === 1 ? '' : 's'}`]);
+    if (r.lists && r.lists.length) rows.push(['Lists', r.lists.join(', ')]);
+    if (r.mailboxes && r.mailboxes.length) rows.push(['Mailbox', r.mailboxes.map((m) => `${str(m.account)} / ${str(m.mailbox)}`).join(', ')]);
+    if (r.sinceDays != null) rows.push(['Window', `Last ${r.sinceDays} day${r.sinceDays === 1 ? '' : 's'}`]);
+    if (r.recipients && r.recipients.length) rows.push(['Send to', r.recipients.join(', ')]);
+    if (!rows.length) rows.push(['Records', 'None']);
+    const f = g.fields || [];
+    const fields = f.includes('*') ? 'All fields' : (f.length ? f.join(', ') : 'None');
+    rows.push(['Fields', h('span', { class: f.includes('*') ? '' : 'f', text: fields })]);
+    return rows;
+  }
+
+  function stateOf(g, now) {
+    if (g.revokedAt) return 'revoked';
+    if (g.expiresAt == null) return 'session';
+    const left = g.msLeft - (now - fetchedAt);
+    return left > 0 ? 'active' : 'expired';
+  }
+
+  function renderClock(g, now) {
+    const st = stateOf(g, now);
+    if (st === 'revoked') return h('div', { class: 'clock' }, h('span', { class: 'state revoked', text: 'Revoked' }), h('div', { class: 'sub', text: fmtClock(g.revokedAt) }));
+    if (st === 'expired') return h('div', { class: 'clock' }, h('span', { class: 'state expired', text: 'Expired' }), h('div', { class: 'sub', text: fmtClock(g.expiresAt) }));
+    if (st === 'session') return h('div', { class: 'clock session' }, h('div', { class: 't', text: 'This session' }), h('div', { class: 'sub', text: 'until Leash stops' }));
+    const left = g.msLeft - (now - fetchedAt);
+    return h('div', { class: 'clock' + (left < 10 * 60 * 1000 ? ' amber' : '') },
+      h('div', { class: 't', text: fmtLeft(left) }),
+      h('div', { class: 'sub', text: `left, ends ${fmtClock(g.expiresAt)}` }));
+  }
+
+  async function revoke(id, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Revoking';
+    try {
+      const res = await fetch(`/api/grants/${encodeURIComponent(id)}/revoke`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Revoke';
+    }
+    loadGrants();
+  }
+
+  function sortGrants(list) {
+    const rank = (g) => (g.active ? 0 : g.revokedAt ? 2 : 1);
+    return list.slice().sort((a, b) => rank(a) - rank(b));
+  }
+
+  function renderGrants() {
+    const now = Date.now();
+    const root = $('grants');
+    root.replaceChildren();
+    const shown = sortGrants(grants);
+    const active = shown.filter((g) => stateOf(g, now) === 'active' || stateOf(g, now) === 'session').length;
+    $('grants-count').textContent = `${active} active`;
+    if (!shown.length) {
+      root.append(h('div', { class: 'card empty' }, h('strong', { text: 'No grants' }), 'Every call will ask first.'));
+      return;
+    }
+    for (const g of shown) {
+      const st = stateOf(g, now);
+      const live = st === 'active' || st === 'session';
+      const [appName, letter] = APP[g.app] || [str(g.app), '?'];
+      const verbs = (g.verbs || []).map((v) => {
+        const t = TIER[v] ?? 0;
+        return h('span', { class: `chip t${t}` }, str(v), t === 3 ? h('small', { text: 'Touch ID' }) : null);
+      });
+      const dl = h('dl', { class: 'scope' });
+      for (const [k, v] of scopeRows(g)) dl.append(h('dt', { text: k }), h('dd', null, v));
+      const card = h('article', { class: 'card' + (live ? '' : ' inactive'), 'data-id': g.id },
+        h('div', { class: 'card-top' },
+          h('div', { class: 'card-title' },
+            h('h3', { text: g.name || g.id }),
+            h('div', { class: 'app' }, h('span', { class: `glyph ${str(g.app)}`, text: letter }), appName)),
+          h('div', { class: 'clock-slot' }, renderClock(g, now))),
+        h('div', { class: 'chips' }, verbs,
+          h('span', { class: 'grow' }),
+          live ? h('button', { class: 'revoke', type: 'button', title: `Revoke ${str(g.id)}`, onclick: (e) => revoke(g.id, e.currentTarget), text: 'Revoke' }) : null),
+        dl);
+      root.append(card);
+    }
+  }
+
+  function tick() {
+    const now = Date.now();
+    let needsFull = false;
+    for (const card of document.querySelectorAll('.card[data-id]')) {
+      const g = grants.find((x) => x.id === card.getAttribute('data-id'));
+      if (!g) continue;
+      const wasLive = !card.classList.contains('inactive');
+      const st = stateOf(g, now);
+      if (wasLive !== (st === 'active' || st === 'session')) { needsFull = true; break; }
+      card.querySelector('.clock-slot').replaceChildren(renderClock(g, now));
+    }
+    if (needsFull) renderGrants();
+  }
+
+  async function loadGrants() {
+    try {
+      const res = await fetch('/api/grants', { cache: 'no-store' });
+      const data = await res.json();
+      grants = data.grants || [];
+      fetchedAt = Date.now();
+      renderGrants();
+    } catch (e) { /* keep the last view */ }
+  }
+
+  // ---------- Ledger ----------
+  const seen = new Set();
+  let firstLedger = true;
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return str(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+
+  function renderLedger(entries, verify) {
+    const root = $('ledger');
+    const n = verify ? verify.entries : entries.length;
+    $('ledger-count').textContent = `${n} ${n === 1 ? 'entry' : 'entries'}`;
+    const chain = $('chain');
+    if (verify && verify.intact === false) {
+      chain.classList.add('broken');
+      $('chain-text').textContent = `Chain broken at #${verify.brokenAt}`;
+    } else {
+      chain.classList.remove('broken');
+      $('chain-text').textContent = `Chain intact, ${n} ${n === 1 ? 'entry' : 'entries'}`;
+    }
+    if (!entries.length) {
+      root.replaceChildren(h('div', { class: 'empty' }, h('strong', { text: 'No calls yet' }), 'Every agent call will land here, newest on top.'));
+      seen.clear();
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const e of entries) {
+      const key = `${e.seq}:${e.hash}`;
+      const isNew = !firstLedger && !seen.has(key);
+      const cls = decisionClass(e.decision);
+      frag.append(h('div', { class: `row ${cls}${isNew ? ' enter' : ''}` },
+        h('div', { class: 'time' }, fmtTime(e.time), h('span', { class: 'seq', text: `#${str(e.seq)}` })),
+        h('div', null, h('span', { class: 'pill', text: decisionLabel(e.decision) })),
+        h('div', { class: 'body' },
+          h('div', { class: 'tool', text: str(e.tool) + (e.agent && e.agent !== 'claude' ? ` · ${e.agent}` : '') }),
+          h('div', { class: 'summary', text: str(e.summary) }),
+          e.returned ? h('div', { class: 'returned', text: str(e.returned) }) : null)));
+    }
+    seen.clear();
+    for (const e of entries) seen.add(`${e.seq}:${e.hash}`);
+    firstLedger = false;
+    root.replaceChildren(frag);
+  }
+
+  async function loadLedger() {
+    try {
+      const res = await fetch('/api/ledger?limit=200', { cache: 'no-store' });
+      const data = await res.json();
+      renderLedger(data.entries || [], data.verify);
+    } catch (e) { /* keep the last view */ }
+  }
+
+  // ---------- Live updates: SSE, with 1 s polling while SSE is down ----------
+  let pollTimer = null;
+  function setLive(on) {
+    $('live').classList.toggle('on', on);
+    $('live-text').textContent = on ? 'Live' : 'Polling';
+    if (on && pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (!on && !pollTimer) pollTimer = setInterval(() => { loadGrants(); loadLedger(); }, 1000);
+  }
+  function connect() {
+    if (!('EventSource' in window)) { setLive(false); return; }
+    const es = new EventSource('/api/events');
+    es.addEventListener('open', () => setLive(true));
+    es.addEventListener('hello', () => { setLive(true); loadGrants(); loadLedger(); });
+    es.addEventListener('change', (ev) => {
+      let kinds = ['grants', 'ledger'];
+      try { kinds = JSON.parse(ev.data).kinds || kinds; } catch {}
+      if (kinds.includes('grants')) loadGrants();
+      if (kinds.includes('ledger')) loadLedger();
+    });
+    es.addEventListener('error', () => setLive(false));
+  }
+
+  loadGrants();
+  loadLedger();
+  connect();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

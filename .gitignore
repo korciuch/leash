@@ -1,0 +1,4 @@
+node_modules/
+helper/Leash
+.DS_Store
+*.log
